@@ -51,7 +51,7 @@ void* cc_alloc(struct cc_arena *a,  size_t size) {
 
 void cc_arena_debug_outofbounds_check(void *rawptr, int do_abort);
 
-struct cc_arena* cc_new_arena_allocator_calloc_wrapper(void);
+struct cc_arena* cc_new_arena_calloc_wrapper(void);
 void cc_destroy_arena_calloc_wrapper(struct cc_arena* a);
 
 struct cc_arena* cc_new_arena_bump_allocator(size_t reserve_size);
@@ -188,7 +188,7 @@ void calloc_wrapper_free_all(struct cc_arena *a) {
     pthread_mutex_unlock(&arena->mutex);
 }
 
-struct cc_arena* cc_new_arena_allocator_calloc_wrapper(void) {
+struct cc_arena* cc_new_arena_calloc_wrapper(void) {
     struct generic_arena *a = calloc(1, sizeof *a);
     if (!a) return NULL;
 
@@ -365,7 +365,7 @@ struct cc_arena* cc_new_arena_bump_allocator(size_t reserve_size) {
     return (struct cc_arena*)a;
 }
 
-void cc_destroy_arena_bump(struct cc_arena* a) {
+void cc_destroy_arena_bump_allocator(struct cc_arena* a) {
     struct bump_arena *arena = (void*)a;
     cc_free_all(a);
     pthread_mutex_destroy(&arena->wrapped_arena.mutex);
