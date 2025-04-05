@@ -233,6 +233,10 @@ static void* platform_commit(void* addr, size_t size) {
     return VirtualAlloc(addr, size, MEM_COMMIT, PAGE_READWRITE);
 }
 
+static void platform_decommit(void* addr, size_t size) {
+    VirtualFree(addr, size, MEM_DECOMMIT);
+}
+
 static void platform_munmap(void* addr, size_t size) {
     (void)size;
     VirtualFree(addr, 0, MEM_RELEASE);
@@ -246,6 +250,11 @@ static void* platform_mmap(size_t size) {
 static void* platform_commit(void* addr, size_t size) {
     mprotect(addr, size, PROT_READ | PROT_WRITE);
     return addr;
+}
+
+static void platform_decommit(void* addr, size_t size) {
+    mprotect(addr, size, PROT_NONE);
+    madvise(addr, size, MADV_DONTNEED);
 }
 
 static void platform_munmap(void* addr, size_t size) {
@@ -326,13 +335,8 @@ void bump_free_all(struct cc_arena *a) {
     #endif
     ga->node = NULL;
     
-    #ifdef _WIN32
-    VirtualFree(arena->base, arena->committed_size, MEM_DECOMMIT);
-    #else
-    mprotect(arena->base, arena->usecommitted_sized_size, PROT_NONE);
-    madvise(arena->base, arena->committed_size, MADV_DONTNEED);
-    #endif
-    
+    platform_decommit(arena->base, arena->committed_size);
+
     arena->used_size = 0;
     arena->committed_size = 0;
     arena->wrapped_arena.count = 0;
