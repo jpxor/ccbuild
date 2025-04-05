@@ -49,7 +49,7 @@ void* cc_alloc(struct cc_arena *a,  size_t size) {
 #endif
 
 
-void cc_arena_debug_outofbounds_check(void *rawptr);
+void cc_arena_debug_outofbounds_check(void *rawptr, int do_abort);
 
 struct cc_arena* cc_new_arena_allocator_calloc_wrapper(void);
 void cc_destroy_arena_calloc_wrapper(struct cc_arena* a);
@@ -120,11 +120,11 @@ bool guard_check(struct allocation *ptr) {
 }
 #endif
 
-void cc_arena_debug_outofbounds_check(void *rawptr) {
+void cc_arena_debug_outofbounds_check(void *rawptr, int do_abort) {
     (void)rawptr;
 #ifndef NDEBUG
     struct allocation *ptr = rawptr - offsetof(struct allocation, block);
-    if (guard_check(ptr)) {
+    if (guard_check(ptr) && do_abort) {
         abort();
     }
 #endif
