@@ -135,37 +135,37 @@ void cc_arena_debug_outofbounds_check(void *rawptr) {
 static inline
 void* calloc_wrapper_alloc(struct cc_arena *a, size_t size, struct cc_alloc_debug_info debug) {
     struct generic_arena *arena = (void*)a;
-    void *retptr = NULL;
     (void)debug;
 
-    if (size > SIZE_MAX - offsetof(struct allocation, block)) {
+    size_t guardsize = 0;
+    #ifndef NDEBUG
+    guardsize += CC_ARENA_GUARDSIZE;
+    #endif
+
+    if (size > SIZE_MAX - sizeof(struct allocation) - guardsize) {
         errno = ENOMEM;
         return NULL;
     }
+    size_t alloc_size = size + sizeof(struct allocation) + guardsize;
+    struct allocation *next = calloc(1, alloc_size);
+    if (next == NULL) {
+        return NULL;
+    }
+    pthread_mutex_lock(&arena->mutex);
+    next->next = arena->node;
+    arena->node = next;
+    arena->count++;
+    arena->total_allocated_bytes += size;
 
-    size_t alloc_size = size + sizeof(struct allocation);
     #ifndef NDEBUG
-    alloc_size += CC_ARENA_GUARDSIZE;
+    next->magic = MAGIC;
+    next->debug = debug;
+    memcpy(next->guard, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
+    memcpy(next->block + size, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
     #endif
 
-    pthread_mutex_lock(&arena->mutex);
-    struct allocation *next = calloc(1, alloc_size);
-    if (next != NULL) {
-        next->next = arena->node;
-        arena->node = next;
-        arena->count++;
-        arena->total_allocated_bytes += size;
-        retptr = next->block;
-
-        #ifndef NDEBUG
-        next->magic = MAGIC;
-        next->debug = debug;
-        memcpy(next->guard, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
-        memcpy(next->block + size, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
-        #endif
-    }
     pthread_mutex_unlock(&arena->mutex);
-    return retptr;
+    return next->block;
 }
 
 static inline
