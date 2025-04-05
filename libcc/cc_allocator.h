@@ -190,6 +190,8 @@ void calloc_wrapper_free_all(struct cc_arena *a) {
 
 struct cc_arena* cc_new_arena_allocator_calloc_wrapper(void) {
     struct generic_arena *a = calloc(1, sizeof *a);
+    if (!a) return NULL;
+
     a->arena = (struct cc_arena){
         .alloc = calloc_wrapper_alloc,
         .free_all = calloc_wrapper_free_all,
