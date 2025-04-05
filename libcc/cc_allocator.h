@@ -67,10 +67,8 @@ void cc_destroy_arena_bump_allocator(struct cc_arena* a);
 
 #ifndef CC_LOGF
 // set default logging
-    #include <stdio.h>
-    #define CC_LOGF printf
-#else
-    #define CC_LOGF
+#include <stdio.h>
+#define CC_LOGF printf
 #endif
 
 #ifndef NDEBUG
