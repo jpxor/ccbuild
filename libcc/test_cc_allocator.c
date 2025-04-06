@@ -6,11 +6,15 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
+// disable logging for tests
+#define CC_LOGF(...)
+
 #define CC_ALLOCATOR_IMPLEMENTATION
 #include "cc_allocator.h"
 
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 static void test_basic_alloc(struct cc_arena*(*make_arena)(void)) {
     struct cc_arena* arena = make_arena();
@@ -133,7 +137,7 @@ static void test_bump_multiple_allocs(struct cc_arena*(*make_arena)(void)) {
 static void test_calloc_allocator(void) {
     test_basic_alloc(cc_new_arena_calloc_wrapper);
     test_alloc_alignment(cc_new_arena_calloc_wrapper);
-    CC_LOGF("[PASSED] test calloc_wrapper allocator\n");
+    printf("[PASSED] test calloc_wrapper allocator\n");
 }
 
 static size_t bump_allocator_reserve_size = 0;
@@ -151,7 +155,7 @@ static void test_bump_allocator(void) {
     bump_allocator_reserve_size = 2048000u;
     test_bump_multiple_allocs(bump_allocator_factory);
 
-    CC_LOGF("[PASSED] test bump allocator\n");
+    printf("[PASSED] test bump allocator\n");
 }
 
 int main(void) {
