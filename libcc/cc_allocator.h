@@ -31,8 +31,8 @@ struct cc_alloc_debug_info {
 #ifndef NDEBUG
     const char* file;
     const char* function;
-    size_t size;
     int line;
+    size_t size;
 #endif
 };
 
@@ -59,10 +59,11 @@ void* cc_alloc(struct cc_arena *a,  size_t size) {
 
 #define cc_alloc(arena, _size) \
     (arena)->alloc(arena, _size, (struct cc_alloc_debug_info) { \
-        .size = _size, \
-        .file = __FILE__, \
+        .file = __FILE__,     \
         .function = __func__, \
-        .line = __LINE__})
+        .line = __LINE__,     \
+        .size = _size,        \
+    })
 #endif
 
 #endif // _CC_ALLOCATOR_H
