@@ -122,6 +122,7 @@ bool guard_check(struct allocation *ptr) {
 
 void cc_arena_debug_outofbounds_check(void *rawptr, int do_abort) {
     (void)rawptr;
+    (void)do_abort;
 #ifndef NDEBUG
     struct allocation *ptr = rawptr - offsetof(struct allocation, block);
     if (guard_check(ptr) && do_abort) {
@@ -265,6 +266,7 @@ static void platform_munmap(void* addr, size_t size) {
 static inline
 void* bump_alloc(struct cc_arena *a, size_t size, struct cc_alloc_debug_info debug) {
     struct bump_arena *arena = (void*)a;
+    (void)debug;
     
     size_t alloc_size = size + sizeof(struct allocation);
     #ifndef NDEBUG
