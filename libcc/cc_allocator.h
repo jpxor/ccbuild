@@ -71,6 +71,8 @@ void* cc_alloc(struct cc_arena *a,  size_t size) {
 
 #include <pthread.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <errno.h>
 
 #ifndef CC_LOGF
 // set default logging
