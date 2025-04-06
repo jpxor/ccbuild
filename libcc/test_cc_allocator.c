@@ -77,6 +77,40 @@ static void test_alloc_alignment(struct cc_arena*(*make_arena)(void)) {
     cc_destroy_arena_bump_allocator(arena);
 }
 
+static void test_guard_check(struct cc_arena*(*make_arena)(void)) {
+    struct cc_arena* arena = make_arena();
+    
+    void* ptr0 = cc_alloc(arena, 128);
+    void* ptr1 = cc_alloc(arena, 128);
+    void* ptr2 = cc_alloc(arena, 128);
+
+    assert(ptr0 != NULL);
+    assert(ptr1 != NULL);
+    assert(ptr2 != NULL);
+    
+    struct allocation *a0 = (struct allocation *)(ptr0 - sizeof(struct allocation));
+    struct allocation *a1 = (struct allocation *)(ptr1 - sizeof(struct allocation));
+    struct allocation *a2 = (struct allocation *)(ptr2 - sizeof(struct allocation));
+
+    assert(guard_check(a0) == false);
+    assert(guard_check(a1) == false);
+    assert(guard_check(a2) == false);
+    
+    // corrupt the magic number
+    a0->magic = 0xDEADBEEF;
+    assert(guard_check(a0) == true);
+    
+    // check for out of bounds writes
+    memset(ptr1+1, 0x01, 128);
+    assert(guard_check(a1) == true);
+
+    memset(ptr2-1, 0x01, 128);
+    assert(guard_check(a2) == true);
+    
+    cc_free_all(arena);
+    cc_destroy_arena_bump_allocator(arena);
+}
+
 static void test_bump_out_of_memory(struct cc_arena*(*make_arena)(void)) {
     struct cc_arena* arena = make_arena();
 
@@ -137,6 +171,7 @@ static void test_bump_multiple_allocs(struct cc_arena*(*make_arena)(void)) {
 static void test_calloc_allocator(void) {
     test_basic_alloc(cc_new_arena_calloc_wrapper);
     test_alloc_alignment(cc_new_arena_calloc_wrapper);
+    test_guard_check(cc_new_arena_calloc_wrapper);
     printf("[PASSED] test calloc_wrapper allocator\n");
 }
 
@@ -149,6 +184,7 @@ static void test_bump_allocator(void) {
     bump_allocator_reserve_size = 2048u;
     test_basic_alloc(bump_allocator_factory);
     test_alloc_alignment(bump_allocator_factory);
+    test_guard_check(bump_allocator_factory);
     test_bump_out_of_memory(bump_allocator_factory);
     test_bump_reuse(bump_allocator_factory);
 
