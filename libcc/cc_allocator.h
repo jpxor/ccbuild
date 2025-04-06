@@ -38,7 +38,7 @@ void* cc_alloc(struct cc_arena *a,  size_t size) {
 
 #else // DEBUG
 #define CC_ARENA_GUARDSIZE 16
-#define CC_ARENA_PATTERN "0123456789ABCDEF"
+#define CC_ARENA_GUARD_PATTERN "0123456789ABCDEF"
 
 #define cc_alloc(arena, _size) \
     (arena)->alloc(arena, _size, (struct cc_alloc_debug_info) { \
@@ -104,11 +104,11 @@ bool guard_check(struct allocation *ptr) {
         CC_LOGF("ERROR: corrupt allocation or address was not allocated by cc_alloc\n");
         return true;
     }
-    if (strncmp(ptr->guard, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE) != 0) {
+    if (strncmp(ptr->guard, CC_ARENA_GUARD_PATTERN, CC_ARENA_GUARDSIZE) != 0) {
         CC_LOGF("ERROR: detected out of bounds write ahead of arena memory allocation\n");
         detected = true;
     }
-    if (strncmp(ptr->block+ptr->debug.size, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE) != 0) {
+    if (strncmp(ptr->block+ptr->debug.size, CC_ARENA_GUARD_PATTERN, CC_ARENA_GUARDSIZE) != 0) {
         CC_LOGF("ERROR: detected out of bounds write past arena memory allocation\n");
         detected = true;
     }
@@ -160,8 +160,8 @@ void* calloc_wrapper_alloc(struct cc_arena *a, size_t size, struct cc_alloc_debu
     #ifndef NDEBUG
     next->magic = MAGIC;
     next->debug = debug;
-    memcpy(next->guard, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
-    memcpy(next->block + size, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
+    memcpy(next->guard, CC_ARENA_GUARD_PATTERN, CC_ARENA_GUARDSIZE);
+    memcpy(next->block + size, CC_ARENA_GUARD_PATTERN, CC_ARENA_GUARDSIZE);
     #endif
 
     pthread_mutex_unlock(&arena->mutex);
@@ -311,8 +311,8 @@ void* bump_alloc(struct cc_arena *a, size_t size, struct cc_alloc_debug_info deb
     #ifndef NDEBUG
     next->magic = MAGIC;
     next->debug = debug;
-    memcpy(next->guard, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
-    memcpy(next->block + size, CC_ARENA_PATTERN, CC_ARENA_GUARDSIZE);
+    memcpy(next->guard, CC_ARENA_GUARD_PATTERN, CC_ARENA_GUARDSIZE);
+    memcpy(next->block + size, CC_ARENA_GUARD_PATTERN, CC_ARENA_GUARDSIZE);
     #endif
 
     pthread_mutex_unlock(&arena->wrapped_arena.mutex);
