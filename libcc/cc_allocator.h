@@ -10,6 +10,23 @@
 
 #include <stdint.h>
 
+// arena that wraps calloc/free
+struct cc_arena* cc_new_arena_calloc_wrapper(void);
+void cc_destroy_arena_calloc_wrapper(struct cc_arena* a);
+
+// arena that uses mmap to reserve address range and maps
+// memmory into the process in 64KB blocks (default)
+struct cc_arena* cc_new_arena_bump_allocator(size_t reserve_size);
+void cc_destroy_arena_bump_allocator(struct cc_arena* a);
+
+// simple check for out of bounds writes, print or abort on detection
+void cc_arena_debug_outofbounds_check(void *rawptr, int do_abort);
+
+// 64KB blocks
+#ifndef BUMP_BLOCK_SIZE
+#define BUMP_BLOCK_SIZE (64 * 1024)
+#endif
+
 struct cc_alloc_debug_info {
 #ifndef NDEBUG
     const char* file;
@@ -47,16 +64,6 @@ void* cc_alloc(struct cc_arena *a,  size_t size) {
         .function = __func__, \
         .line = __LINE__})
 #endif
-
-
-void cc_arena_debug_outofbounds_check(void *rawptr, int do_abort);
-
-struct cc_arena* cc_new_arena_calloc_wrapper(void);
-void cc_destroy_arena_calloc_wrapper(struct cc_arena* a);
-
-struct cc_arena* cc_new_arena_bump_allocator(size_t reserve_size);
-void cc_destroy_arena_bump_allocator(struct cc_arena* a);
-
 
 #endif // _CC_ALLOCATOR_H
 
@@ -211,9 +218,6 @@ void cc_destroy_arena_calloc_wrapper(struct cc_arena* a) {
 
 ///////////////  MMAP BUMP ALLOCATOR ////////////////////
 
-// 64KB blocks
-#define BUMP_COMMIT_SIZE (64 * 1024)
-
 struct bump_arena {
     struct generic_arena wrapped_arena;
     void* base;
@@ -288,8 +292,8 @@ void* bump_alloc(struct cc_arena *a, size_t size, struct cc_alloc_debug_info deb
     if (required_size > arena->committed_size) {
 
         void* commit_addr = arena->base + arena->committed_size;
-        size_t commit_size = ((required_size - arena->committed_size + BUMP_COMMIT_SIZE - 1) 
-                             & ~(BUMP_COMMIT_SIZE - 1));
+        size_t commit_size = ((required_size - arena->committed_size + BUMP_BLOCK_SIZE - 1) 
+                             & ~(BUMP_BLOCK_SIZE - 1));
         
         if (arena->committed_size + commit_size > arena->reserved_size) {
             commit_size = arena->reserved_size - arena->committed_size;
