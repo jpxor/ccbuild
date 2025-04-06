@@ -6,6 +6,10 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
+#ifdef NDEBUG
+#error "arena allocator tests require debug info (can't set NDEBUG)"
+#endif
+
 // disable logging for tests
 #define CC_LOGF(...)
 
