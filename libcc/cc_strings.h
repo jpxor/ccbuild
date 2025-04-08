@@ -104,7 +104,7 @@ void ccstr_free(ccstr *s) {
 // READONLY functions
 
 int ccstrchr(ccstrview sv, char c) {
-    for (int i = 0; i < sv.len; ++i) {
+    for (uint32_t  i = 0; i < sv.len; ++i) {
         if (sv.cstr[i] == c) {
             return i;
         }
@@ -123,7 +123,7 @@ int ccstrstr(ccstrview sv, ccstrview pattern) {
     return (int)(found - sv.cstr);
 }
 
-ccstrview ccsv_offset(ccstrview sv, int offset) {
+ccstrview ccsv_offset(ccstrview sv, uint32_t  offset) {
     offset = (sv.len > offset)? offset : sv.len;
     return (ccstrview) {
         .cstr = sv.cstr + offset,
