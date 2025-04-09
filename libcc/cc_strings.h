@@ -150,16 +150,23 @@ int ccsv_strcount(ccstrview sv, ccstrview pattern) {
 // READ/WRITE functions
 
 size_t ccstr_realloc(ccstr *s, size_t newcap) {
+    if (newcap <= s->len) {
+        s->len = newcap - 1;
+    }
     // static innitialzed ccstr needs to be
     // replaced with heap allocation
     if (s->flags & CCSTR_FLAG_STATIC) {
-        s->cstr = malloc(newcap);
-        s->cap = newcap;
-        s->flags = 0;
-        if (s->cstr == NULL) {
-            s->len = 0;
-            s->cap = 0;
+        s->flags = s->flags & ~CCSTR_FLAG_STATIC;
+        char *newptr = malloc(newcap);
+        if (newptr == NULL) {
+            *s = (ccstr) {0};
+            s->flags = CCSTR_FLAG_TRUNCATED;
+            return 0;
         }
+        memcpy(newptr, s->cstr, s->len);
+        s->cstr = newptr;
+        s->cap = newcap;
+        s->cstr[s->len] = 0;
         return s->cap;
     }
     void *newptr = realloc(s->cstr, newcap);
@@ -168,6 +175,7 @@ size_t ccstr_realloc(ccstr *s, size_t newcap) {
     }
     s->cstr = newptr;
     s->cap = newcap;
+    s->cstr[s->len] = 0;
     return newcap;
 }
 
