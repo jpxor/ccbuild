@@ -17,7 +17,7 @@
 // - cannot abort on enomem
 // - truncated flag set on enomem
 // - allows static init for convenience
-// - max len: 32bits
+// - max len: 2^32
 // - returns ccstr* to allow chaining
 
 #define CCSTR_FLAG_STATIC 1
