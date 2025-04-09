@@ -33,20 +33,27 @@ typedef struct {
     uint32_t flags;
 } ccstr;
 
-#define CCSTR_STATIC(s) (ccstr ){ \
-    .cstr = s,                    \
-    .len = sizeof(s)-1,           \
-    .cap = 0        ,             \
-    .flags = CCSTR_FLAG_STATIC,   \
-}
-
 // ccstrview does not own its memory
 // and cannot be resized, and might
 // not be null terminated
 typedef struct {
     char *cstr;
     uint32_t len;
+    uint32_t flags;
 } ccstrview;
+
+#define CCSTR_STATIC(s) (ccstr){  \
+    .cstr = s,                    \
+    .len = sizeof(s)-1,           \
+    .cap = 0        ,             \
+    .flags = CCSTR_FLAG_STATIC,   \
+}
+
+#define CCSTRVIEW_STATIC(s) (ccstrview){ \
+    .cstr = s,                    \
+    .len = sizeof(s)-1,           \
+    .flags = CCSTR_FLAG_STATIC,   \
+}
 
 static inline
 ccstrview ccsv(const ccstr *s) {
