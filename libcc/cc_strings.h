@@ -186,7 +186,7 @@ ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len) {
     size_t mincap = (size_t)len + 1;
     if (s->cap < mincap) {
         ccstr_realloc(s, mincap);
-        if (s->cap == 0) {
+        if (s->cap < mincap) {
             s->flags |= CCSTR_FLAG_TRUNCATED;
             return s;
         }
