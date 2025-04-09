@@ -2,7 +2,7 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- * 
+ *
  * Copyright (c) 2025 Josh Simonot
  */
 #ifndef _CC_STRINGS_H
@@ -252,7 +252,7 @@ ccstr * ccstr_replace(ccstr *s, ccstrview search, ccstrview replace) {
     for (int i = 0; i < count; ++i) {
         int offset = ccstrstr(itr, search);
         assert(offset >= 0);
-        
+
         itr = ccsv_offset(itr, offset);
         if (shiftlen != 0) {
             char *dest = itr.cstr + replace.len;
