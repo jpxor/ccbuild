@@ -199,6 +199,44 @@ int test_ccstr_replace(void) {
     return 0;
 }
 
+int test_ccstr_append_join(void) {
+    ccstr s = CCSTR_STATIC("zero");
+    ccstrview sep = ccsv_raw(" ");
+    ccstrview svlist[] = {
+        CCSTRVIEW_STATIC("one"),
+        CCSTRVIEW_STATIC("two"),
+        CCSTRVIEW_STATIC("three"),
+    };
+
+    // null dest
+    CHKEQ_PTR(ccstr_append_join(NULL, sep, svlist, 1), NULL);
+
+    // null list
+    CHKEQ_PTR(ccstr_append_join(&s, sep, NULL, 0), &s);
+    CHKEQ_STR(s.cstr, "zero");
+    CHKEQ_INT(s.len, 4);
+
+    // simple append
+    CHKEQ_PTR(ccstr_append_join(&s, CCSTRVIEW_STATIC(""), svlist, 1), &s);
+    CHKEQ_STR(s.cstr, "zeroone");
+    CHKEQ_INT(s.len, 7);
+
+    // append with separator
+    ccstrcpy_raw(&s, "zero");
+    CHKEQ_PTR(ccstr_append_join(&s, sep, svlist, 1), &s);
+    CHKEQ_STR(s.cstr, "zero one");
+
+    // append join 2
+    ccstrcpy_raw(&s, "zero");
+    CHKEQ_PTR(ccstr_append_join(&s, sep, svlist, 2), &s);
+    CHKEQ_STR(s.cstr, "zero one two");
+
+    // append join 3
+    ccstrcpy_raw(&s, "zero");
+    CHKEQ_PTR(ccstr_append_join(&s, sep, svlist, 3), &s);
+    CHKEQ_STR(s.cstr, "zero one two three");
+}
+
 int main(void) {
     int err;
     
@@ -208,6 +246,7 @@ int main(void) {
     err |= test_ccsv_offset();
     err |= test_ccsv_strcount();
     err |= test_ccstr_replace();
+    err |= test_ccstr_append_join();
 
     printf("[%s] test cc_strings\n", err? "FAILED": "PASSED");
     return 0;

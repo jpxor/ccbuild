@@ -73,6 +73,8 @@ ccstrview ccsv_raw(char *raw) {
 
 ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len);
 ccstr* ccstr_replace(ccstr *s, ccstrview search, ccstrview replace);
+ccstr* ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count);
+
 ccstrview ccsv_offset(ccstrview sv, uint32_t  offset);
 int ccsv_strcount(ccstrview sv, ccstrview pattern);
 int ccstrstr(ccstrview sv, ccstrview pattern);
@@ -258,6 +260,40 @@ ccstr * ccstr_replace(ccstr *s, ccstrview search, ccstrview replace) {
     s->len = final_len;
     s->cstr[final_len] = 0;
     return s;
+}
+
+ccstr * ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count) {
+    assert(dest != NULL);
+    assert(srcs != NULL);
+
+    if (dest == NULL || srcs == NULL || count == 0) {
+        return dest;
+    }
+    // cap check
+    int additional_length = 0;
+    for (int i = 0; i < count; ++i) {
+        additional_length += srcs[i].len + sep.len;
+    }
+    size_t mincap = dest->len + additional_length + 1;
+    if (dest->cap < mincap) {
+        ccstr_realloc(dest, mincap);
+        if (dest->cap < mincap) {
+            dest->flags |= CCSTR_FLAG_TRUNCATED;
+            return dest;
+        }
+    }
+    // append
+    for (int i = 0; i < count; ++i) {
+        memcpy(dest->cstr + dest->len, sep.cstr, sep.len);
+        dest->len += sep.len;
+
+        memcpy(dest->cstr + dest->len, srcs[i].cstr, srcs[i].len);
+        dest->len += srcs[i].len;
+
+        dest->flags |= (srcs[i].flags & CCSTR_FLAG_TRUNCATED);
+    }
+    dest->cstr[dest->len] = 0;
+    return dest;
 }
 
 #endif // CC_STRINGS_IMPLEMENTATION
