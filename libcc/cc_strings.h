@@ -73,6 +73,10 @@ ccstrview ccsv_raw(char *raw) {
 
 ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len);
 ccstr* ccstr_replace(ccstr *s, ccstrview search, ccstrview replace);
+ccstrview ccsv_offset(ccstrview sv, uint32_t  offset);
+int ccsv_strcount(ccstrview sv, ccstrview pattern);
+int ccstrstr(ccstrview sv, ccstrview pattern);
+int ccstrchr(ccstrview sv, char c);
 
 static inline
 ccstr * ccstr_replace_raw(ccstr *s, const char *search, const char *replace) {
