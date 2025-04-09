@@ -23,6 +23,8 @@ struct cc_trie {
     bool default_arena;
 };
 
+#define CC_TRIE_STR_KEY(str) (const uint8_t*)(str),strlen(str)
+
 int cc_trie_insert(struct cc_trie *trie, const uint8_t *key, size_t keylen, void* val);
 int cc_trie_iterate(struct cc_trie *trie, void *ctx, int (*callback)(void *ctx, void *leafdata));
 void * cc_trie_search(struct cc_trie *trie, const uint8_t *key, size_t keylen);
