@@ -96,6 +96,12 @@ ccstr * ccstrcpy(ccstr *s, const ccstr src) {
 }
 
 static inline
+ccstr * ccstrcat(ccstr *dest, char *sep, char *src) {
+    ccstrview sv_src = ccsv_raw(src);
+    return ccstr_append_join(dest, ccsv_raw(sep), &sv_src, 1);
+}
+
+static inline
 void ccstr_free(ccstr *s) {
     if (s->flags & CCSTR_FLAG_STATIC) {
         return;
