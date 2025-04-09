@@ -64,7 +64,7 @@ ccstrview ccsv(const ccstr *s) {
 }
 
 static inline
-ccstrview ccsv_raw(char *raw) {
+ccstrview ccsv_raw(const char *raw) {
     return (ccstrview) {
         .cstr = (char*)raw,
         .len = strlen(raw),
@@ -96,7 +96,7 @@ ccstr * ccstrcpy(ccstr *s, const ccstr src) {
 }
 
 static inline
-ccstr * ccstrcat(ccstr *dest, char *sep, char *src) {
+ccstr * ccstrcat(ccstr *dest, const char *sep, const char *src) {
     ccstrview sv_src = ccsv_raw(src);
     return ccstr_append_join(dest, ccsv_raw(sep), &sv_src, 1);
 }
