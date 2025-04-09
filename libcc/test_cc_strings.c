@@ -6,6 +6,10 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
+#ifndef NDEBUG
+#error NDEBUG needs to be defined to test null cases which are normally caught via asserts
+#endif
+
 #define CC_STRINGS_IMPLEMENTATION
 #include "cc_strings.h"
 

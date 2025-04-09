@@ -191,6 +191,8 @@ size_t ccstr_realloc(ccstr *s, size_t newcap) {
 }
 
 ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len) {
+    assert(s != NULL);
+
     if (s == NULL) {
         return NULL;
     }
@@ -216,6 +218,8 @@ ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len) {
 }
 
 ccstr * ccstr_replace(ccstr *s, ccstrview search, ccstrview replace) {
+    assert(s != NULL);
+
     if (s == NULL) {
         return NULL;
     }
