@@ -10,6 +10,7 @@ build_all:
 	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_allocator.c
 	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_trie_map.c
 	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_strings.c
+	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_files.c
 
 run_tests:
 	@alloc_test
