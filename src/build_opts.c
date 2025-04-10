@@ -68,24 +68,31 @@ void init_opts(struct build_opts *opts, const char *name) {
     }
 }
 
-static inline
-bool match_opt(const char *opt, const char *key) {
+// compare parsed key from ini file to known option string,
+// key may be upper or lower case and may have a + symbol
+// to indicate intent to append to the current value
+static bool match_opt(const char *opt, const char *key) {
     size_t optlen = strlen(opt);
     return strncasecmp(opt, key, optlen) == 0
         // key is at least as long as opt
         && (key[optlen] == 0 || key[optlen] == ' ' || key[optlen] == '+');
 }
 
-static
-void resolve_default_cc(void) {
+// if default cc is not set in the config, assume default
+// is one of gcc|clang|cl
+//
+// if default cc in the config provides a list of compilers
+// then resolve which compiler to use
+static void resolve_default_cc(void) {
     if (g_default_bopts.cc.len == 0) {
         ccstrcpy_raw(&g_default_bopts.cc, find_compiler("gcc|clang|cl"));
-
     } else if (ccstrchr(ccsv(&g_default_bopts.cc), '|')) {
         ccstrcpy_raw(&g_default_bopts.cc, find_compiler(g_default_bopts.cc.cstr));
     }
 }
 
+// callback for ini parser, called for each key/value pair
+// in the ini file and called when entering new [section]
 int parse_opts_cb(void* ctx, const char* target, const char* key, const char* value) {
     struct cc_trie *target_opts_map = ctx;
     struct build_opts *target_opts = NULL;
@@ -104,6 +111,7 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
         return 0;
     }
 
+    // detect default opts vs specific target opts
     if (strlen(target) == 0) {
         target = "default";
         target_opts = &g_default_bopts;
