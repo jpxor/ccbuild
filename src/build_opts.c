@@ -8,6 +8,7 @@
 
 #include "build_opts.h"
 #include "build_opts_def.h"
+#include "build_opts_helpers.h"
 
 #include "libcc/cc_files.h"
 #include "libcc/cc_strings.h"
@@ -20,53 +21,8 @@
 #include <string.h>
 #include <errno.h>
 
-#define OPT_VIA_OFFSET(ptr, offset) ((char*)(ptr) + (offset))
-
-// will find compiler if its on the PATH
-static int is_compiler_available(const char *compiler) {
-    char command[128];
-
-    #if defined(_WIN32) || defined(_WIN64)
-    snprintf(command, sizeof(command), "%s --version >nul 2>nul", compiler);
-    #elif defined(_POSIX_VERSION)
-    snprintf(command, sizeof(command), "%s --version > /dev/null 2>&1", compiler);
-    #else
-    #error Platform not supported.
-    #endif
-
-    return (system(command) == 0);
-}
-
-static char* find_compiler(const char *compiler_list) {
-    static char compiler[128];
-    char temp[256];
-
-    strncpy(temp, compiler_list, sizeof(temp) - 1);
-    temp[sizeof(temp) - 1] = 0;
-
-    char *token = strtok(temp, "|");
-    while (token != NULL) {
-        if (is_compiler_available(token)) {
-            // skip leading whitespace
-            while (*token && (*token == ' ' || *token == '\t')) token++;
-
-            // find length to trim trailing whitespace
-            size_t len = strlen(token);
-            while (len > 0 && (token[len-1] == ' ' || token[len-1] == '\t')) len--;
-
-            strncpy(compiler, token, len);
-            compiler[len] = 0;
-            return compiler;
-        }
-        token = strtok(NULL, "|");
-    }
-    printf("error: no compiler found on 'path'. Check that a compiler is installed and available.\n");
-    printf("       If a compiler is installed, ensure its on the path or specify an absolute path\n");
-    printf("       with the option: CC\n");
-    exit(1);
-}
-
-// global build options allocator
+// global build options allocator,
+// needs to be initialized before use
 static struct cc_arena *g_opts_allocator = NULL;
 
 // global default build options
@@ -245,11 +201,6 @@ int resolve_variables_cb(void *ctx, void *data) {
         ccstr_replace(&opts->link_static, ccsv_raw("$(LIBS)"), ccsv(&opts->libs));
     }
     return 0;
-}
-
-static
-void foreach_target(struct cc_trie *targets, int (*callback)(void *ctx, void *data)) {
-    cc_trie_iterate(targets, targets, callback);
 }
 
 // TODO: what happens if no config file?
