@@ -34,7 +34,6 @@ void cc_trie_clear(struct cc_trie *trie);
 
 #endif // _CC_TRIE_MAP_H
 
-#define CC_TRIE_MAP_IMPLEMENTATION
 #ifdef CC_TRIE_MAP_IMPLEMENTATION
 
 struct cc_trie_node {
