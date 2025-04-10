@@ -213,18 +213,16 @@ int resolve_variables_cb(void *ctx, void *data) {
 
 // TODO: what happens if no config file?
 struct cc_trie parse_bopts(const char *filename) {
-
     // init globals
     if (!g_opts_allocator) {
         g_opts_allocator = cc_new_arena_calloc_wrapper();
         g_default_bopts.lastmodified = ccfs_last_modified_time(filename);
     }
-
     struct cc_trie target_opts_map = {
         .arena = g_opts_allocator,
     };
-    ini_parse(filename, parse_opts_cb, &target_opts_map);
 
+    ini_parse(filename, parse_opts_cb, &target_opts_map);
     foreach_target(&target_opts_map, resolve_variables_cb);
     return target_opts_map;
 }
