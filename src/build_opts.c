@@ -96,29 +96,17 @@ static struct build_opts g_default_bopts = {
 // init new target opts by copying global default opts
 void init_opts(struct build_opts *opts, const char *name) {
     ccstrcpy_raw(&opts->target, name);
-
-    ccstrcpy(&opts->cc, g_default_bopts.cc);
-    ccstrcpy(&opts->cc, g_default_bopts.cc);
-    ccstrcpy(&opts->build_root, g_default_bopts.build_root);
-    ccstrcpy(&opts->install_root, g_default_bopts.install_root);
-    ccstrcpy(&opts->srcpaths, g_default_bopts.srcpaths);
-    ccstrcpy(&opts->incpaths, g_default_bopts.incpaths);
-    ccstrcpy(&opts->libpaths, g_default_bopts.libpaths);
-    ccstrcpy(&opts->installdir, g_default_bopts.installdir);
-    ccstrcpy(&opts->ccflags, g_default_bopts.ccflags);
-    ccstrcpy(&opts->ldflags, g_default_bopts.ldflags);
-    ccstrcpy(&opts->libs, g_default_bopts.libs);
-    ccstrcpy(&opts->release, g_default_bopts.release);
-    ccstrcpy(&opts->debug, g_default_bopts.debug);
-    ccstrcpy(&opts->compile, g_default_bopts.compile);
-    ccstrcpy(&opts->link, g_default_bopts.link);
-    ccstrcpy(&opts->link_shared, g_default_bopts.link_shared);
-    ccstrcpy(&opts->link_static, g_default_bopts.link_static);
-    ccstrcpy(&opts->libname, g_default_bopts.libname);
-
     opts->type = g_default_bopts.type;
     opts->so_version = g_default_bopts.so_version;
     opts->lastmodified = g_default_bopts.lastmodified;
+    for (int i = 0; build_option_defs[i].name != NULL; i++) {
+        struct option_def def = build_option_defs[i];
+        if (def.ccstr_init_cp) {
+            ccstr *dest = (ccstr*)OPT_VIA_OFFSET(opts, def.field_offset);
+            ccstr *src = (ccstr*)OPT_VIA_OFFSET(&g_default_bopts, def.field_offset);
+            ccstrcpy(dest, *src);
+        }
+    }
 }
 
 static inline
