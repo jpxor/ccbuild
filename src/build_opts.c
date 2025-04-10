@@ -121,30 +121,6 @@ void init_opts(struct build_opts *opts, const char *name) {
     opts->lastmodified = g_default_bopts.lastmodified;
 }
 
-// Free memory for a single config
-void free_config(struct build_opts *config) {
-    ccstr_free(&config->target);
-    ccstr_free(&config->cc);
-    ccstr_free(&config->build_root);
-    ccstr_free(&config->install_root);
-    ccstr_free(&config->srcpaths);
-    ccstr_free(&config->incpaths);
-    ccstr_free(&config->libpaths);
-    ccstr_free(&config->installdir);
-    ccstr_free(&config->ccflags);
-    ccstr_free(&config->ldflags);
-    ccstr_free(&config->libs);
-    ccstr_free(&config->release);
-    ccstr_free(&config->debug);
-    ccstr_free(&config->compile);
-    ccstr_free(&config->link);
-    ccstr_free(&config->link_shared);
-    ccstr_free(&config->link_static);
-    ccstr_free(&config->libname);
-    config->so_version = 0;
-    config->type = BIN;
-}
-
 static inline
 bool append_opt(const char *optname) {
     return optname[strlen(optname)-1] == '+';
