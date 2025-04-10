@@ -136,6 +136,13 @@ void free_config(struct build_opts *config) {
     config->type = BIN;
 }
 
+struct option_def{
+    const char *name;
+    bool supports_append;
+    intptr_t field_offset;
+    void (*opt_handler)(const struct option_def *def, void *optptr, const char *key, const char *value);
+};
+
 static inline
 bool append_opt(const char *optname) {
     return optname[strlen(optname)-1] == '+';
@@ -148,6 +155,100 @@ bool match_opt(const char *opt, const char *key) {
         // key is at least as long as opt
         && (key[optlen] == 0 || key[optlen] == ' ' || key[optlen] == '+');
 }
+
+// handles general case for parsed options
+// if append is true, append value to existing opt
+// if append is false, set opt to value
+static void general_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
+    if (append_opt(key)) {
+        if (def->supports_append) {
+            ccstrcat((ccstr*)optptr, " ", value);
+        } else {
+            printf("config error: append to %s not supported.\n", def->name);
+            exit(1);
+        }
+    } else {
+        ccstrcpy_raw((ccstr*)optptr, value);
+    }
+};
+
+// so_version needs to be parsed as an int
+static void so_version_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
+    assert(def->field_offset == offsetof(struct build_opts, so_version));
+
+    if (append_opt(key)) {
+        printf("config error: append to %s not supported.\n", def->name);
+        exit(1);
+    }
+    char *endptr;
+    int so_version = strtoul(value, &endptr, 10);
+    if (errno == ERANGE) {
+        printf("config error: SO_VERSION overflow or underflow.\n");
+        exit(1);
+    }
+    if (*endptr != 0 || endptr == value) {
+        printf("config error: SO_VERSION not a valid number: %s\n", value);
+        exit(1);
+    }
+    int *opt = optptr;
+    *opt = so_version;
+}
+
+// type needs to be parsed as a bitfield
+// with multiple flags possiblly set
+static void type_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
+    assert(def->field_offset == offsetof(struct build_opts, type));
+    (void)def;
+
+    unsigned type = 0;
+    if (strstr(value, "bin")) {
+        type |= BIN;
+    }
+    if (strstr(value, "shared")) {
+        type |= SHARED;
+    }
+    if (strstr(value, "static")) {
+        type |= STATIC;
+    }
+    if (strstr(value, "lib")) {
+        type |= SHARED|STATIC;
+    }
+    enum target_type *opt = optptr;
+    if (append_opt(key)) {
+        *opt |= type;
+    } else {
+        *opt = type;
+    }
+    if (*opt == 0) {
+        printf("config error: invalid TYPE: %s\n", value);
+        printf("            : options: bin, shared, static\n");
+        exit(1);
+    }
+}
+
+static const struct option_def build_option_defs[] = {
+    {"BUILD_ROOT",   false, offsetof(struct build_opts, build_root), general_opt_handler},
+    {"INSTALL_ROOT", false, offsetof(struct build_opts, install_root), general_opt_handler},
+    {"CC",           false, offsetof(struct build_opts, cc), general_opt_handler},
+    {"LIBNAME",      false, offsetof(struct build_opts, libname), general_opt_handler},
+    {"SRC_PATHS",    true,  offsetof(struct build_opts, srcpaths), general_opt_handler},
+    {"INC_PATHS",    true,  offsetof(struct build_opts, incpaths), general_opt_handler},
+    {"LIB_PATHS",    true,  offsetof(struct build_opts, libpaths), general_opt_handler},
+    {"CCFLAGS",      true,  offsetof(struct build_opts, ccflags), general_opt_handler},
+    {"LDFLAGS",      true,  offsetof(struct build_opts, ldflags), general_opt_handler},
+    {"LIBS",         true,  offsetof(struct build_opts, libs), general_opt_handler},
+    {"RELEASE",      true,  offsetof(struct build_opts, release), general_opt_handler},
+    {"DEBUG",        true,  offsetof(struct build_opts, debug), general_opt_handler},
+    {"COMPILE",      false,  offsetof(struct build_opts, compile), general_opt_handler},
+    {"LINK",         false,  offsetof(struct build_opts, link), general_opt_handler},
+    {"LINK_SHARED",  false,  offsetof(struct build_opts, link_shared), general_opt_handler},
+    {"LINK_STATIC",  false,  offsetof(struct build_opts, link_static), general_opt_handler},
+    {"INSTALL_DIR",  false, offsetof(struct build_opts, installdir), general_opt_handler},
+    {"TARGET",       false, offsetof(struct build_opts, target), general_opt_handler},
+    {"TYPE",         false, offsetof(struct build_opts, type), type_opt_handler},
+    {"SO_VERSION",   false, offsetof(struct build_opts, so_version), so_version_opt_handler},
+    {NULL, 0, 0, NULL}
+};
 
 static
 void resolve_default_cc(void) {
@@ -187,155 +288,22 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
         assert(target_opts != NULL);
     }
 
-    // printf("%s -- %s :: %s\n", target_opts->target, target, key);
-    // ccstrview sv_val = ccsv_raw(value);
+    #define PTR_OFFSET(ptr, offset) ((char*)(ptr) + (offset))
 
-    if (match_opt("BUILD_ROOT", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to BUILD_ROOT not supported.\n");
-            exit(1);
+    // handles the parsed string, setting or appending the value
+    // into the correct target_opts build option field
+    for (int i = 0; build_option_defs[i].name != NULL; i++) {
+        const struct option_def *def = &build_option_defs[i];
+        if (match_opt(def->name, key)) {
+            void *opt = (void*)PTR_OFFSET(target_opts, def->field_offset);
+            def->opt_handler(def, opt, key, value);
+            return 0;
         }
-        ccstrcpy_raw(&target_opts->build_root, value);
-
-    } else if (match_opt("INSTALL_ROOT", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to INSTALL_ROOT opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->install_root, value);
-
-    } else if (match_opt("CC", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to CC opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->cc, value);
-
-    } else if (match_opt("INSTALLDIR", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to INSTALLDIR opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->installdir, value);
-
-    } else if (match_opt("SO_VERSION", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to SO_VERSION opt not supported.\n");
-            exit(1);
-        }
-        char *endptr;
-        target_opts->so_version = strtoul(value, &endptr, 10);
-        if (errno == ERANGE) {
-            printf("config error: SO_VERSION overflow or underflow.\n");
-            exit(1);
-        }
-        if (*endptr != 0 || endptr == value) {
-            printf("config error: SO_VERSION not a valid number: %s\n", value);
-            exit(1);
-        }
-
-    } else if (match_opt("COMPILE", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to COMPILE opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->compile, value);
-
-    } else if (match_opt("LINK", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to LINK opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->link, value);
-
-    } else if (match_opt("LINK_static", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to LINK_static opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->link_static, value);
-
-    } else if (match_opt("LINK_shared", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to LINK_shared opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->link_shared, value);
-
-    } else if (match_opt("RELEASE", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to RELEASE opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->release, value);
-
-    } else if (match_opt("DEBUG", key)) {
-        if (append_opt(key)) {
-            printf("config error: append to DEBUG opt not supported.\n");
-            exit(1);
-        }
-        ccstrcpy_raw(&target_opts->debug, value);
-
-    } else if (match_opt("TYPE", key)) {
-        unsigned type = 0;
-        if (strstr(value, "bin")) {
-            type |= BIN;
-        }
-        if (strstr(value, "shared")) {
-            type |= SHARED;
-        }
-        if (strstr(value, "static")) {
-            type |= STATIC;
-        }
-        if (strstr(value, "lib")) {
-            type |= SHARED|STATIC;
-        }
-        if (append_opt(key)) {
-            target_opts->type |= type;
-        } else {
-            target_opts->type = type;
-        }
-        if (target_opts->type == 0) {
-            printf("config error: invalid TYPE: %s\n", value);
-            printf("            : options: bin, shared, static\n");
-            exit(1);
-        }
-
-    } else if (match_opt("CCFLAGS", key)) {
-        if (append_opt(key)) ccstrcat(&target_opts->ccflags, " ", value);
-        else ccstrcpy_raw(&target_opts->ccflags, value);
-
-    } else if (match_opt("LDFLAGS", key)) {
-        if (append_opt(key)) ccstrcat(&target_opts->ldflags, " ", value);
-        else ccstrcpy_raw(&target_opts->ldflags, value);
-
-    } else if (match_opt("SRCPATHS", key)) {
-        if (append_opt(key)) ccstrcat(&target_opts->srcpaths, " ", value);
-        else ccstrcpy_raw(&target_opts->srcpaths, value);
-
-    } else if (match_opt("INCPATHS", key)) {
-        if (append_opt(key)) ccstrcat(&target_opts->incpaths, " ", value);
-        else ccstrcpy_raw(&target_opts->incpaths, value);
-
-    } else if (match_opt("LIBPATHS", key)) {
-        if (append_opt(key)) ccstrcat(&target_opts->libpaths, " ", value);
-        else ccstrcpy_raw(&target_opts->libpaths, value);
-
-    } else if (match_opt("LIBS", key)) {
-        if (append_opt(key)) ccstrcat(&target_opts->libs, " ", value);
-        else ccstrcpy_raw(&target_opts->libs, value);
-
-    } else if (match_opt("LIBNAME", key)) {
-        if (append_opt(key)) ccstrcat(&target_opts->libname, "", value);
-        else ccstrcpy_raw(&target_opts->libname, value);
-
-    } else {
-        printf("config error: unknown option: '%s'.\n", key);
-        exit(1);
     }
-    return 0;
-}
 
+    printf("config error: unknown option: '%s'.\n", key);
+    exit(1);
+}
 
 static
 int resolve_variables_cb(void *ctx, void *data) {
