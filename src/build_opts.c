@@ -110,11 +110,6 @@ void init_opts(struct build_opts *opts, const char *name) {
 }
 
 static inline
-bool append_opt(const char *optname) {
-    return optname[strlen(optname)-1] == '+';
-}
-
-static inline
 bool match_opt(const char *opt, const char *key) {
     size_t optlen = strlen(opt);
     return strncasecmp(opt, key, optlen) == 0
