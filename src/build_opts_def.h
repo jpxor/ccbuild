@@ -29,27 +29,33 @@ struct option_def{
  static void so_version_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
  static void type_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
 
+ #define YES_APPEND   true
+ #define YES_CCSTRCPY true
+ #define NO_APPEND    false
+ #define NO_CCSTRCPY  false
+ #define BOPT_OFFSET(name) offsetof(struct build_opts, name)
+ 
 static const struct option_def build_option_defs[] = {
-    {"BUILD_ROOT",   false, true, offsetof(struct build_opts, build_root), general_opt_handler},
-    {"INSTALL_ROOT", false, true, offsetof(struct build_opts, install_root), general_opt_handler},
-    {"CC",           false, true, offsetof(struct build_opts, cc), general_opt_handler},
-    {"LIBNAME",      false, true, offsetof(struct build_opts, libname), general_opt_handler},
-    {"SRC_PATHS",    true, true,  offsetof(struct build_opts, srcpaths), general_opt_handler},
-    {"INC_PATHS",    true, true,  offsetof(struct build_opts, incpaths), general_opt_handler},
-    {"LIB_PATHS",    true, true,  offsetof(struct build_opts, libpaths), general_opt_handler},
-    {"CCFLAGS",      true, true,  offsetof(struct build_opts, ccflags), general_opt_handler},
-    {"LDFLAGS",      true, true,  offsetof(struct build_opts, ldflags), general_opt_handler},
-    {"LIBS",         true, true,  offsetof(struct build_opts, libs), general_opt_handler},
-    {"RELEASE",      true, true,  offsetof(struct build_opts, release), general_opt_handler},
-    {"DEBUG",        true, true,  offsetof(struct build_opts, debug), general_opt_handler},
-    {"COMPILE",      false, true,  offsetof(struct build_opts, compile), general_opt_handler},
-    {"LINK",         false, true,  offsetof(struct build_opts, link), general_opt_handler},
-    {"LINK_SHARED",  false, true,  offsetof(struct build_opts, link_shared), general_opt_handler},
-    {"LINK_STATIC",  false, true,  offsetof(struct build_opts, link_static), general_opt_handler},
-    {"INSTALL_DIR",  false, true, offsetof(struct build_opts, installdir), general_opt_handler},
-    {"TARGET",       false, false, offsetof(struct build_opts, target), general_opt_handler},
-    {"TYPE",         false, false, offsetof(struct build_opts, type), type_opt_handler},
-    {"SO_VERSION",   false, false, offsetof(struct build_opts, so_version), so_version_opt_handler},
+    {"BUILD_ROOT",   NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(build_root), general_opt_handler},
+    {"INSTALL_ROOT", NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(install_root), general_opt_handler},
+    {"CC",           NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(cc), general_opt_handler},
+    {"LIBNAME",      NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(libname), general_opt_handler},
+    {"COMPILE",      NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(compile), general_opt_handler},
+    {"LINK",         NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(link), general_opt_handler},
+    {"LINK_SHARED",  NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(link_shared), general_opt_handler},
+    {"LINK_STATIC",  NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(link_static), general_opt_handler},
+    {"INSTALL_DIR",  NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(installdir), general_opt_handler},
+    {"SRC_PATHS",   YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(srcpaths), general_opt_handler},
+    {"INC_PATHS",   YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(incpaths), general_opt_handler},
+    {"LIB_PATHS",   YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(libpaths), general_opt_handler},
+    {"CCFLAGS",     YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(ccflags), general_opt_handler},
+    {"LDFLAGS",     YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(ldflags), general_opt_handler},
+    {"LIBS",        YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(libs), general_opt_handler},
+    {"RELEASE",     YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(release), general_opt_handler},
+    {"DEBUG",       YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(debug), general_opt_handler},
+    {"TARGET",       NO_APPEND,  NO_CCSTRCPY, BOPT_OFFSET(target), general_opt_handler},
+    {"TYPE",         NO_APPEND,  NO_CCSTRCPY, BOPT_OFFSET(type), type_opt_handler},
+    {"SO_VERSION",   NO_APPEND,  NO_CCSTRCPY, BOPT_OFFSET(so_version), so_version_opt_handler},
     {NULL, 0, 0, 0, NULL}
 };
 
