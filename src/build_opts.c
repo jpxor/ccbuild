@@ -1,18 +1,27 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * Copyright (c) 2025 Josh Simonot
+ */
+
+#include "build_opts.h"
+
+#include "libcc/cc_files.h"
+#include "libcc/cc_strings.h"
+
+#include "vendor/inih/ini.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
-#include "build_opts.h"
-#include "libcc/cc_files.h"
-
-#include "libcc/cc_strings.h"
-
-#include "vendor/inih/ini.h"
+#define PTR_OFFSET(ptr, offset) ((char*)(ptr) + (offset))
 
 // will find compiler if its on the PATH
-int is_compiler_available(const char *compiler) {
+static int is_compiler_available(const char *compiler) {
     char command[128];
 
     #if defined(_WIN32) || defined(_WIN64)
@@ -26,8 +35,7 @@ int is_compiler_available(const char *compiler) {
     return (system(command) == 0);
 }
 
-
-char* find_compiler(const char *compiler_list) {
+static char* find_compiler(const char *compiler_list) {
     static char compiler[128];
     char temp[256];
 
@@ -264,8 +272,6 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
     struct cc_trie *target_opts_map = ctx;
     struct build_opts *target_opts = NULL;
 
-    // const ccstr target2 = ccstr_raw(target);
-
     // parser detected new [section], which means new target
     if (key == NULL && value == NULL) {
 
@@ -288,8 +294,6 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
         assert(target_opts != NULL);
     }
 
-    #define PTR_OFFSET(ptr, offset) ((char*)(ptr) + (offset))
-
     // handles the parsed string, setting or appending the value
     // into the correct target_opts build option field
     for (int i = 0; build_option_defs[i].name != NULL; i++) {
@@ -300,7 +304,6 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
             return 0;
         }
     }
-
     printf("config error: unknown option: '%s'.\n", key);
     exit(1);
 }
