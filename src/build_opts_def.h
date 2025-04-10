@@ -11,6 +11,8 @@
 
  #include <stdbool.h>
  #include <stdio.h>
+ #include <assert.h>
+ #include <errno.h>
 
 // provides a "definition" of each build options which allows
 // to declaritively define how to parse and handle each option

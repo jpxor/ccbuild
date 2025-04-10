@@ -11,6 +11,7 @@
 
 #include "libcc/cc_files.h"
 #include "libcc/cc_strings.h"
+#include "libcc/cc_trie_map.h"
 
 #include "vendor/inih/ini.h"
 
@@ -96,9 +97,11 @@ static struct build_opts g_default_bopts = {
 // init new target opts by copying global default opts
 void init_opts(struct build_opts *opts, const char *name) {
     ccstrcpy_raw(&opts->target, name);
+
     opts->type = g_default_bopts.type;
     opts->so_version = g_default_bopts.so_version;
     opts->lastmodified = g_default_bopts.lastmodified;
+
     for (int i = 0; build_option_defs[i].name != NULL; i++) {
         struct option_def def = build_option_defs[i];
         if (def.ccstr_init_cp) {

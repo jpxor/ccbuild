@@ -9,7 +9,6 @@
 #ifndef _BUILD_OPTS_H_
 #define _BUILD_OPTS_H_
 
-#include "libcc/cc_trie_map.h"
 #include "libcc/cc_strings.h"
 
 enum target_type {
