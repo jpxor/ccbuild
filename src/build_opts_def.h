@@ -103,7 +103,7 @@ static void so_version_opt_handler(const struct option_def *def, void *optptr, c
 }
 
 // type needs to be parsed as a bitfield
-// with multiple flags possiblly set
+// where multiple flags can be set
 static void type_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
     assert(def->field_offset == offsetof(struct build_opts, type));
     (void)def;
