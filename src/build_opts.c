@@ -19,7 +19,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define PTR_OFFSET(ptr, offset) ((char*)(ptr) + (offset))
+#define OPT_VIA_OFFSET(ptr, offset) ((char*)(ptr) + (offset))
 
 // will find compiler if its on the PATH
 static int is_compiler_available(const char *compiler) {
@@ -175,7 +175,7 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
     for (int i = 0; build_option_defs[i].name != NULL; i++) {
         const struct option_def *def = &build_option_defs[i];
         if (match_opt(def->name, key)) {
-            void *opt = (void*)PTR_OFFSET(target_opts, def->field_offset);
+            void *opt = (void*)OPT_VIA_OFFSET(target_opts, def->field_offset);
             def->opt_handler(def, opt, key, value);
             return 0;
         }
