@@ -55,6 +55,20 @@ static int cctest_str_equals(struct cctest_ctx ctx, char *gotstr, char *got, cha
 #define CHKEQ_STR(got, exp) \
 if (cctest_str_equals((cctest_ctx_t){.file=__FILE__,.test=__func__,.line=__LINE__}, #got, got, #exp, exp) == -1) {return -1;}
 
+static int cctest_strn_equals(struct cctest_ctx ctx, char *gotstr, char *got, char *expstr, char *exp, int n) {
+    if (strncmp(got, exp, n) != 0) {
+        printf("%s:%d\n", ctx.file, ctx.line);
+        printf(" > %s\n", ctx.test);
+        printf(" > GOT %s = %s\n", gotstr, got);
+        printf(" > EXP %s = %s\n", expstr, exp);
+        return -1;
+    }
+    return 0;
+}
+#define CHKEQ_STRN(got, N, exp) \
+if (cctest_strn_equals((cctest_ctx_t){.file=__FILE__,.test=__func__,.line=__LINE__}, #got, got, #exp, exp, N) == -1) {return -1;}
+
+
 static int cctest_ptr_equals(struct cctest_ctx ctx, char *gotstr, void *got, char *expstr, void *exp) {
     if (got != exp) {
         printf("%s:%d\n", ctx.file, ctx.line);

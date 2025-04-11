@@ -76,6 +76,7 @@ ccstr* ccstr_replace(ccstr *s, ccstrview search, ccstrview replace);
 ccstr* ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count);
 
 ccstrview ccsv_offset(ccstrview sv, uint32_t  offset);
+ccstrview ccsv_slice(ccstrview sv, uint32_t  offset, uint32_t  len);
 int ccsv_strcount(ccstrview sv, ccstrview pattern);
 int ccstrstr(ccstrview sv, ccstrview pattern);
 int ccstrchr(ccstrview sv, char c);
@@ -147,6 +148,14 @@ ccstrview ccsv_offset(ccstrview sv, uint32_t  offset) {
     return (ccstrview) {
         .cstr = sv.cstr + offset,
         .len = sv.len - offset,
+    };
+}
+
+ccstrview ccsv_slice(ccstrview sv, uint32_t  offset, uint32_t  len) {
+    offset = (sv.len > offset)? offset : sv.len;
+    return (ccstrview) {
+        .cstr = sv.cstr + offset,
+        .len = (len <= sv.len - offset)? len : sv.len - offset,
     };
 }
 

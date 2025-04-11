@@ -120,6 +120,38 @@ int test_ccsv_offset(void) {
     return 0;
 }
 
+int test_ccsv_slice(void) {
+    ccstrview sv = ccsv_raw("one two three");
+    ccstrview offsv;
+
+    // slice 0
+    offsv = ccsv_slice(sv, 0, 0);
+    CHKEQ_PTR(offsv.cstr, sv.cstr);
+    CHKEQ_INT(offsv.len, 0);
+
+    // slice start
+    offsv = ccsv_slice(sv, 0, 3);
+    CHKEQ_STRN(offsv.cstr, offsv.len, "one");
+    CHKEQ_INT(offsv.len, 3);
+
+    // slice mid
+    offsv = ccsv_slice(sv, 4, 3);
+    CHKEQ_STRN(offsv.cstr, offsv.len, "two");
+    CHKEQ_INT(offsv.len, 3);
+
+    // slice end
+    offsv = ccsv_slice(sv, 8, 5);
+    CHKEQ_STRN(offsv.cstr, offsv.len, "three");
+    CHKEQ_INT(offsv.len, 5);
+
+    // slice over end
+    offsv = ccsv_slice(sv, 8, 10);
+    CHKEQ_STRN(offsv.cstr, offsv.len, "three");
+    CHKEQ_INT(offsv.len, 5);
+
+    return 0;
+}
+
 int test_ccsv_strcount(void) {
     ccstrview sv = ccsv_raw("one two three two three three");
 
@@ -244,6 +276,7 @@ int main(void) {
     err |= test_ccstrchr();
     err |= test_ccstrstr();
     err |= test_ccsv_offset();
+    err |= test_ccsv_slice();
     err |= test_ccsv_strcount();
     err |= test_ccstr_replace();
     err |= test_ccstr_append_join();
