@@ -77,6 +77,7 @@ ccstr* ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count)
 
 ccstrview ccsv_offset(ccstrview sv, uint32_t  offset);
 ccstrview ccsv_slice(ccstrview sv, uint32_t  offset, uint32_t  len);
+int ccstrcasecmp(ccstrview a, ccstrview b);
 int ccsv_strcount(ccstrview sv, ccstrview pattern);
 int ccstrstr(ccstrview sv, ccstrview pattern);
 int ccstrchr(ccstrview sv, char c);
@@ -120,6 +121,7 @@ void ccstr_free(ccstr *s) {
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 
 // READONLY functions
 
@@ -141,6 +143,18 @@ int ccstrstr(ccstrview sv, ccstrview pattern) {
         return -1;
     }
     return (int)(found - sv.cstr);
+}
+
+int ccstrcasecmp(ccstrview a, ccstrview b) {
+    int minlen = (a.len < b.len)? a.len : b.len;
+    for (int i = 0; i < minlen; ++i) {
+        char c1 = tolower((unsigned char)a.cstr[i]);
+        char c2 = tolower((unsigned char)b.cstr[i]);
+        if (c1 != c2) {
+            return c1 - c2;
+        }
+    }
+    return a.len - b.len;
 }
 
 ccstrview ccsv_offset(ccstrview sv, uint32_t  offset) {

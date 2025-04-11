@@ -269,6 +269,30 @@ int test_ccstr_append_join(void) {
     CHKEQ_STR(s.cstr, "zero one two three");
 }
 
+int test_ccstrcasecmp(void) {
+    ccstrview a1 = ccsv_raw("one");
+    ccstrview b1 = ccsv_raw("ONE");
+    CHKEQ_INT(ccstrcasecmp(a1, b1), 0);
+
+    ccstrview a2 = ccsv_raw("tWo");
+    ccstrview b2 = ccsv_raw("TwO");
+    CHKEQ_INT(ccstrcasecmp(a2, b2), 0);
+
+    ccstrview a3 = ccsv_raw("ThReE");
+    ccstrview b3 = ccsv_raw("tHrEeE");
+    CHKEQ_INT(ccstrcasecmp(a3, b3), -1);
+
+    ccstrview a4 = ccsv_raw("fourr");
+    ccstrview b4 = ccsv_raw("four");
+    CHKEQ_INT(ccstrcasecmp(a4, b4),  1);
+
+    ccstrview a5 = ccsv_raw("five");
+    ccstrview b5 = ccsv_raw("5");
+    CHKNOT_EQ_INT(ccstrcasecmp(a5, b5),  0);
+
+    return 0;
+}
+
 int main(void) {
     int err;
     
@@ -280,6 +304,7 @@ int main(void) {
     err |= test_ccsv_strcount();
     err |= test_ccstr_replace();
     err |= test_ccstr_append_join();
+    err |= test_ccstrcasecmp();
 
     printf("[%s] test cc_strings\n", err? "FAILED": "PASSED");
     return 0;
