@@ -134,79 +134,34 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
     exit(1);
 }
 
-static
-int resolve_variables_cb(void *ctx, void *data) {
+static int resolve_variables_cb(void *ctx, void *data) {
     struct build_opts *opts = data;
     (void)ctx;
 
-    // strip numeric prefix from target
-    char *resolved_target;
-    strtoul(opts->target.cstr, &resolved_target, 10);
-    if (resolved_target[0] == '.') {
-        ++resolved_target;
-    }
-    ccstrview str_target = ccsv_raw(resolved_target);
+    // perform 3 passes to resolve variables
+    // which allows for short chains of nested/dependent variables
+    for (int pass = 0; pass < 3; ++pass) {
 
-    // resolve ROOT's first
-    ccstr_replace_raw(&opts->build_root, "$(TARGET)", resolved_target);
-    ccstr_replace_raw(&opts->install_root,"$(TARGET)", resolved_target);
-    ccstr_replace_raw(&opts->libname,"$(TARGET)", resolved_target);
+        // resolve each opt variable in order defined by build_option_defs
+        for (int i = 0; build_option_defs[i].name != NULL; i++) {
+            struct option_def def = build_option_defs[i];
+            ccstr *optval = (ccstr*)OPT_VIA_OFFSET(opts, def.field_offset);
 
-    ccstrview str_build_root = ccsv(&opts->build_root);
-    ccstrview str_install_root = ccsv(&opts->install_root);
-
-    // then PATHS
-    ccstr_replace_raw(&opts->srcpaths, "$(TARGET)", resolved_target);
-    ccstr_replace(&opts->srcpaths, ccsv_raw("$(BUILD_ROOT)"), str_build_root);
-    ccstr_replace(&opts->srcpaths, ccsv_raw("$(INSTALL_ROOT)"), str_install_root);
-
-    ccstr_replace_raw(&opts->incpaths, "$(TARGET)", resolved_target);
-    ccstr_replace(&opts->incpaths, ccsv_raw("$(BUILD_ROOT)"), str_build_root);
-    ccstr_replace(&opts->incpaths, ccsv_raw("$(INSTALL_ROOT)"), str_install_root);
-
-    ccstr_replace_raw(&opts->libpaths, "$(TARGET)", resolved_target);
-    ccstr_replace(&opts->libpaths, ccsv_raw("$(BUILD_ROOT)"), str_build_root);
-    ccstr_replace(&opts->libpaths, ccsv_raw("$(INSTALL_ROOT)"), str_install_root);
-
-    // then compile/link commands
-    ccstr_replace(&opts->compile, ccsv_raw("$(CC)"), ccsv(&opts->cc));
-    ccstr_replace(&opts->compile, ccsv_raw("$(CCFLAGS)"), ccsv(&opts->ccflags));
-    ccstr_replace(&opts->compile, ccsv_raw("$(TARGET)"), str_target);
-    ccstr_replace(&opts->compile, ccsv_raw("$(BUILD_ROOT)"), str_build_root);
-    ccstr_replace(&opts->compile, ccsv_raw("$(INSTALL_ROOT)"), str_install_root);
-
-    ccstr_replace(&opts->link, ccsv_raw("$(CC)"), ccsv(&opts->cc));
-    ccstr_replace(&opts->link, ccsv_raw("$(LDFLAGS)"), ccsv(&opts->ldflags));
-    ccstr_replace(&opts->link, ccsv_raw("$(TARGET)"), str_target);
-    ccstr_replace(&opts->link, ccsv_raw("$(BUILD_ROOT)"), str_build_root);
-    ccstr_replace(&opts->link, ccsv_raw("$(INSTALL_ROOT)"), str_install_root);
-
-    ccstr_replace(&opts->link, ccsv_raw("$(INSTALLDIR)"), ccsv(&opts->installdir));
-    ccstr_replace(&opts->link, ccsv_raw("$(LIBPATHS)"), ccsv(&opts->libpaths));
-    ccstr_replace(&opts->link, ccsv_raw("$(LIBS)"), ccsv(&opts->libs));
-
-    if (opts->type & SHARED) {
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(CC)"), ccsv(&opts->cc));
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(LDFLAGS)"), ccsv(&opts->ldflags));
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(TARGET)"), str_target);
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(BUILD_ROOT)"), str_build_root);
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(INSTALL_ROOT)"), str_install_root);
-
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(INSTALLDIR)"), ccsv(&opts->installdir));
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(LIBPATHS)"), ccsv(&opts->libpaths));
-        ccstr_replace(&opts->link_shared, ccsv_raw("$(LIBS)"), ccsv(&opts->libs));
-    }
-
-    if (opts->type & STATIC) {
-        ccstr_replace(&opts->link_static, ccsv_raw("$(CC)"), ccsv(&opts->cc));
-        ccstr_replace(&opts->link_static, ccsv_raw("$(LDFLAGS)"), ccsv(&opts->ldflags));
-        ccstr_replace(&opts->link_static, ccsv_raw("$(TARGET)"), str_target);
-        ccstr_replace(&opts->link_static, ccsv_raw("$(BUILD_ROOT)"), str_build_root);
-        ccstr_replace(&opts->link_static, ccsv_raw("$(INSTALL_ROOT)"), str_install_root);
-
-        ccstr_replace(&opts->link_static, ccsv_raw("$(INSTALLDIR)"), ccsv(&opts->installdir));
-        ccstr_replace(&opts->link_static, ccsv_raw("$(LIBPATHS)"), ccsv(&opts->libpaths));
-        ccstr_replace(&opts->link_static, ccsv_raw("$(LIBS)"), ccsv(&opts->libs));
+            size_t max_loops = 10;
+            for (size_t i = 0;; ++i) {
+                ccstrview var = find_variable(ccsv(optval));
+                if (var.len == 0) {
+                    break;
+                }
+                if (i >= max_loops) {
+                    printf("config error: failed to resolve variable '%.*s'\n", var.len, var.cstr);
+                    exit(1);
+                }
+                ccstrview varname = ccsv_slice(var, 2, var.len - 3);
+                ccstrview value = get_var_value(build_option_defs, opts, varname);
+                ccstr_replace(optval, var, value);
+            }
+        }
     }
     return 0;
 }

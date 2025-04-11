@@ -9,10 +9,11 @@
  #ifndef _BUILD_OPT_HELPERS_H_
  #define _BUILD_OPT_HELPERS_H_
 
+ #include "libcc/cc_strings.h"
  #include "libcc/cc_trie_map.h"
 
 // returns pointer offset by `offset` bytes
- #define OPT_VIA_OFFSET(ptr, offset) ((char*)(ptr) + (offset))
+#define OPT_VIA_OFFSET(ptr, offset) (void*)((char*)(ptr) + (offset))
 
 // iterate over all targets in the trie_map
 static void foreach_target(struct cc_trie *targets, int (*callback)(void *ctx, void *data)) {
@@ -64,6 +65,64 @@ static char* find_compiler(const char *compiler_list) {
     printf("       If a compiler is installed, ensure its on the path or specify an absolute path\n");
     printf("       with the option: CC\n");
     exit(1);
+}
+
+// Detects a variable in the format $(VARNAME) and returns it as a ccstrview
+// Returns a zero-length ccstrview if no variable is found
+static ccstrview find_variable(ccstrview sv) {
+    ccstrview result = {0};
+
+    if (!sv.cstr || sv.len == 0) {
+        return result;
+    }
+    int start = ccstrstr(sv, CCSTRVIEW_STATIC("$("));
+    if (start == -1) {
+        return result;
+    }
+    int end = ccstrstr(ccsv_offset(sv, start), CCSTRVIEW_STATIC(")"));
+    if (end == -1) {
+        return result;
+    }
+    return (ccstrview) {
+        .cstr = sv.cstr + start,
+        .len = end - start + 1,
+    };
+}
+
+// the build order of targets can be specified by adding
+// a numeric prefix and optional '.' separator to the target
+// name, which must be stripped before variable substitution
+static ccstrview strip_numeric_prefix(ccstr *str) {
+    assert(str != NULL);
+    if (str == NULL || str->len == 0 || !str->cstr) {
+        return (ccstrview){0};
+    }
+    char *endptr;
+    strtoul(str->cstr, &endptr, 10);
+    if (*endptr == '.') ++endptr;
+    return ccsv_offset(ccsv(str), (endptr - str->cstr));
+}
+
+// given a variable name which should match one of the config options, return its value
+static ccstrview get_var_value(const struct option_def* optdefs, struct build_opts *opts, ccstrview varname) {
+    if (varname.len == 0 || !varname.cstr) {
+        return (ccstrview){0};
+    }
+    #define NAME_MATCH(varname, name) (ccstrcasecmp(varname, ccsv_raw(name)) == 0)
+
+    // special case for TARGET: it might have a numeric prefix
+    // that needs to be stripped
+    if (NAME_MATCH(varname, "TARGET")) {
+        return strip_numeric_prefix(&opts->target);
+    }
+    // general case, look for a match in the option definitions
+    for (size_t i = 0; optdefs[i].name != NULL; ++i) {
+        if (NAME_MATCH(varname, optdefs[i].name)) {
+            return ccsv(OPT_VIA_OFFSET(opts, optdefs[i].field_offset));
+        }
+    }
+    /// no matches
+    return (ccstrview){0};
 }
 
  #endif // _BUILD_OPT_HELPERS_H_
