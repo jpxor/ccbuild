@@ -60,7 +60,7 @@ void init_opts(struct build_opts *opts, const char *name) {
 
     for (int i = 0; build_option_defs[i].name != NULL; i++) {
         struct option_def def = build_option_defs[i];
-        if (def.ccstr_init_cp) {
+        if (def.flags & OPTDEF_CCSTRCPY) {
             ccstr *dest = (ccstr*)OPT_VIA_OFFSET(opts, def.field_offset);
             ccstr *src = (ccstr*)OPT_VIA_OFFSET(&g_default_bopts, def.field_offset);
             ccstrcpy(dest, *src);
@@ -145,6 +145,11 @@ static int resolve_variables_cb(void *ctx, void *data) {
         // resolve each opt variable in order defined by build_option_defs
         for (int i = 0; build_option_defs[i].name != NULL; i++) {
             struct option_def def = build_option_defs[i];
+
+            // opt must be a ccstr that allows variable expansion
+            if (!(def.flags & OPTDEF_VAR_EXPAND)) {
+                continue;
+            }
             ccstr *optval = (ccstr*)OPT_VIA_OFFSET(opts, def.field_offset);
 
             size_t max_loops = 10;

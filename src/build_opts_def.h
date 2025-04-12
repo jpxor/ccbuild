@@ -14,49 +14,55 @@
  #include <assert.h>
  #include <errno.h>
 
+ enum optdef_flag {
+    OPTDEF_NO_FLAGS = 0,
+    OPTDEF_APPEND = 0b001,
+    OPTDEF_CCSTRCPY = 0b010,
+    OPTDEF_VAR_EXPAND = 0b100,
+ };
+
 // provides a "definition" of each build options which allows
 // to declaritively define how to parse and handle each option
 // and provides the infrastructure for looping over each opt
 struct option_def{
     const char *name;
-    bool supports_append;
-    bool ccstr_init_cp;
-    int field_offset;
     void (*opt_handler)(const struct option_def *def, void *optptr, const char *key, const char *value);
+    int field_offset;
+    int flags;
 };
 
  static void general_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
  static void so_version_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
  static void type_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
 
- #define YES_APPEND   true
- #define YES_CCSTRCPY true
- #define NO_APPEND    false
- #define NO_CCSTRCPY  false
+ #define NO_APPEND OPT_CCSTRCPY|OPT_VAREXPAND
+ #define CAN_APPEND OPT_APPEND|OPT_CCSTRCPY|OPT_VAREXPAND
+ #define NOT_CCSTR 0
+ 
  #define BOPT_OFFSET(name) offsetof(struct build_opts, name)
  
 static const struct option_def build_option_defs[] = {
-    {"BUILD_ROOT",   NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(build_root), general_opt_handler},
-    {"INSTALL_ROOT", NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(install_root), general_opt_handler},
-    {"CC",           NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(cc), general_opt_handler},
-    {"LIBNAME",      NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(libname), general_opt_handler},
-    {"COMPILE",      NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(compile), general_opt_handler},
-    {"LINK",         NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(link), general_opt_handler},
-    {"LINK_SHARED",  NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(link_shared), general_opt_handler},
-    {"LINK_STATIC",  NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(link_static), general_opt_handler},
-    {"INSTALL_DIR",  NO_APPEND, YES_CCSTRCPY, BOPT_OFFSET(installdir), general_opt_handler},
-    {"SRC_PATHS",   YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(srcpaths), general_opt_handler},
-    {"INC_PATHS",   YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(incpaths), general_opt_handler},
-    {"LIB_PATHS",   YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(libpaths), general_opt_handler},
-    {"CCFLAGS",     YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(ccflags), general_opt_handler},
-    {"LDFLAGS",     YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(ldflags), general_opt_handler},
-    {"LIBS",        YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(libs), general_opt_handler},
-    {"RELEASE",     YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(release), general_opt_handler},
-    {"DEBUG",       YES_APPEND, YES_CCSTRCPY, BOPT_OFFSET(debug), general_opt_handler},
-    {"TARGET",       NO_APPEND,  NO_CCSTRCPY, BOPT_OFFSET(target), general_opt_handler},
-    {"TYPE",         NO_APPEND,  NO_CCSTRCPY, BOPT_OFFSET(type), type_opt_handler},
-    {"SO_VERSION",   NO_APPEND,  NO_CCSTRCPY, BOPT_OFFSET(so_version), so_version_opt_handler},
-    {NULL, 0, 0, 0, NULL}
+    {"BUILD_ROOT",   general_opt_handler,    BOPT_OFFSET(build_root),   OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"INSTALL_ROOT", general_opt_handler,    BOPT_OFFSET(install_root), OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"CC",           general_opt_handler,    BOPT_OFFSET(cc),           OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LIBNAME",      general_opt_handler,    BOPT_OFFSET(libname),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"COMPILE",      general_opt_handler,    BOPT_OFFSET(compile),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LINK",         general_opt_handler,    BOPT_OFFSET(link),         OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LINK_SHARED",  general_opt_handler,    BOPT_OFFSET(link_shared),  OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LINK_STATIC",  general_opt_handler,    BOPT_OFFSET(link_static),  OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"INSTALLDIR",   general_opt_handler,    BOPT_OFFSET(installdir),   OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"SRCPATHS",     general_opt_handler,    BOPT_OFFSET(srcpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"INCPATHS",     general_opt_handler,    BOPT_OFFSET(incpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"LIBPATHS",     general_opt_handler,    BOPT_OFFSET(libpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"CCFLAGS",      general_opt_handler,    BOPT_OFFSET(ccflags),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"LDFLAGS",      general_opt_handler,    BOPT_OFFSET(ldflags),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"LIBS",         general_opt_handler,    BOPT_OFFSET(libs),         OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"RELEASE",      general_opt_handler,    BOPT_OFFSET(release),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"DEBUG",        general_opt_handler,    BOPT_OFFSET(debug),        OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"TARGET",       general_opt_handler,    BOPT_OFFSET(target),       OPTDEF_NO_FLAGS},
+    {"TYPE",         type_opt_handler,       BOPT_OFFSET(type),         OPTDEF_NO_FLAGS},
+    {"SO_VERSION",   so_version_opt_handler, BOPT_OFFSET(so_version),   OPTDEF_NO_FLAGS},
+    {NULL, NULL, 0, 0},
 };
 
 static inline
@@ -69,7 +75,7 @@ bool append_opt(const char *optname) {
 // if append is false, set opt to value
 static void general_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
     if (append_opt(key)) {
-        if (def->supports_append) {
+        if (def->flags & OPTDEF_APPEND) {
             ccstrcat((ccstr*)optptr, " ", value);
         } else {
             printf("config error: append to %s not supported.\n", def->name);
