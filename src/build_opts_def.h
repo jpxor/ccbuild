@@ -35,12 +35,8 @@ struct option_def{
  static void so_version_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
  static void type_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
 
- #define NO_APPEND OPT_CCSTRCPY|OPT_VAREXPAND
- #define CAN_APPEND OPT_APPEND|OPT_CCSTRCPY|OPT_VAREXPAND
- #define NOT_CCSTR 0
- 
  #define BOPT_OFFSET(name) offsetof(struct build_opts, name)
- 
+
 static const struct option_def build_option_defs[] = {
     {"BUILD_ROOT",   general_opt_handler,    BOPT_OFFSET(build_root),   OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
     {"INSTALL_ROOT", general_opt_handler,    BOPT_OFFSET(install_root), OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
