@@ -153,12 +153,12 @@ static int resolve_variables_cb(void *ctx, void *data) {
             ccstr *optval = (ccstr*)OPT_VIA_OFFSET(opts, def.field_offset);
 
             size_t max_loops = 10;
-            for (size_t i = 0;; ++i) {
+            for (size_t j = 0;; ++j) {
                 ccstrview var = find_variable(ccsv(optval));
                 if (var.len == 0) {
                     break;
                 }
-                if (i >= max_loops) {
+                if (j >= max_loops) {
                     printf("config error: failed to resolve variable '%.*s'\n", var.len, var.cstr);
                     exit(1);
                 }
@@ -172,7 +172,7 @@ static int resolve_variables_cb(void *ctx, void *data) {
 }
 
 // TODO: what happens if no config file?
-struct cc_trie parse_bopts(const char *filename) {
+struct cc_trie parse_build_opts(const char *filename) {
     // init globals
     if (!g_opts_allocator) {
         g_opts_allocator = cc_new_arena_calloc_wrapper();

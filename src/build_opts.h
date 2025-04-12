@@ -10,6 +10,7 @@
 #define _BUILD_OPTS_H_
 
 #include "libcc/cc_strings.h"
+#include "libcc/cc_trie_map.h"
 
 enum target_type {
     BIN =    0b001,
@@ -41,7 +42,7 @@ struct build_opts {
     enum target_type type;
 };
 
-struct target_opts_map parse_config(const char *filename);
+struct cc_trie parse_build_opts(const char *filename);
 void print_configs(const struct target_opts_map topts);
 
 #endif // _BUILD_OPTS_H_
