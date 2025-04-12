@@ -43,6 +43,6 @@ struct build_opts {
 };
 
 struct cc_trie parse_build_opts(const char *filename);
-void print_configs(const struct target_opts_map topts);
+void print_config(const struct build_opts *bopts);
 
 #endif // _BUILD_OPTS_H_

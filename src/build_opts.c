@@ -187,35 +187,26 @@ struct cc_trie parse_build_opts(const char *filename) {
     return target_opts_map;
 }
 
-// static
-// int print_opts_cb(void *ctx, void *data) {
-//     struct build_opts *opts = data;
-//     (void)ctx;
-
-//     printf("[%s]\n", opts->target.base);
-//     printf("type: flag(%d)\n", opts->type);
-//     if (opts->type & (SHARED|STATIC)) {
-//         printf("so_version: %u\n", opts->so_version);
-//     }
-// #define printopt(optname) printf(#optname" = '%s'\n", opts->optname.base)
-//     printopt(compile);
-//     printopt(link);
-//     printopt(build_root);
-//     printopt(install_root);
-//     printopt(installdir);
-//     printopt(srcpaths);
-//     printopt(incpaths);
-//     printopt(libpaths);
-//     printopt(ccflags);
-//     printopt(ldflags);
-//     printopt(release);
-//     printopt(debug);
-//     printopt(libs);
-// #undef printopt
-//     printf("\n");
-//     return 0;
-// }
-
-// void print_configs(struct parsed_opts parsed_opts) {
-//     foreach_target(&parsed_opts, print_opts_cb);
-// }
+void print_config(const struct build_opts *opts) {
+    printf("[%s]\n", opts->target.cstr);
+    printf("type: flag(%d)\n", opts->type);
+    if (opts->type & (SHARED|STATIC)) {
+        printf("so_version: %u\n", opts->so_version);
+    }
+#define printopt(optname) printf(#optname" = '%s'\n", opts->optname.cstr)
+    printopt(compile);
+    printopt(link);
+    printopt(build_root);
+    printopt(install_root);
+    printopt(installdir);
+    printopt(srcpaths);
+    printopt(incpaths);
+    printopt(libpaths);
+    printopt(ccflags);
+    printopt(ldflags);
+    printopt(release);
+    printopt(debug);
+    printopt(libs);
+#undef printopt
+    printf("\n");
+}
