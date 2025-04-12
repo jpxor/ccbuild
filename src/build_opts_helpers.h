@@ -85,7 +85,7 @@ static ccstrview find_variable(ccstrview sv) {
     }
     return (ccstrview) {
         .cstr = sv.cstr + start,
-        .len = end - start + 1,
+        .len = end + 1,
     };
 }
 
