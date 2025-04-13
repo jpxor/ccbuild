@@ -3,6 +3,7 @@
 #define _CCTEST_H
 
 #include <stdio.h>
+#include <string.h>
 
 typedef struct cctest_ctx {
     const char *test;
