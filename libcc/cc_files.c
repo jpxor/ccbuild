@@ -5,5 +5,11 @@
  *
  * Copyright (c) 2025 Josh Simonot
  */
- #define CC_FILES_IMPLEMENTATION
- #include "cc_files.h"
+
+// set logging function matching printf declaration,
+// or define as nothing to disable stdio and prints
+#include <stdio.h>
+#define CC_LOGF printf
+
+#define CC_FILES_IMPLEMENTATION
+#include "cc_files.h"

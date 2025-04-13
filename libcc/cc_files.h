@@ -22,6 +22,12 @@ int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *c
 #include <errno.h>
 #include <limits.h>
 
+// set default logging
+#ifndef CC_LOGF
+#include <stdio.h>
+#define CC_LOGF printf
+#endif
+
 time_t ccfs_last_modified_time(const char *filepath) {
     struct stat st;
     if (stat(filepath, &st) == -1) {
@@ -34,7 +40,8 @@ int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *c
     DIR *dir = opendir(directory);
     if (!dir) {
         if (errno != ENOENT) {
-            printf("Error: Unable to open directory %s\n", directory);
+            CC_LOGF("Error: Unable to open directory %s\n", directory);
+            return -1;
         }
         return 0;
     }
@@ -47,8 +54,8 @@ int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *c
         int reqsize = snprintf(filepath, sizeof(filepath), "%s/%s", directory, entry->d_name);
 
         if (reqsize >= sizeof(filepath)) {
-            printf("Error: Filepath too long\n");
-            printf("%s/%s\n", directory, entry->d_name);
+            CC_LOGF("Error: Filepath too long\n");
+            CC_LOGF("%s/%s\n", directory, entry->d_name);
             closedir(dir);
             return -1;
         }
