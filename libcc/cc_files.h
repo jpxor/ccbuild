@@ -8,9 +8,14 @@
 #ifndef _CC_FILES_H
 #define _CC_FILES_H
 
-#include "time.h"
+#include <time.h>
+#include <stdbool.h>
 
 time_t ccfs_last_modified_time(const char *filepath);
+bool ccfs_is_regular_file(const char *path);
+bool ccfs_is_directory(const char *path);
+int ccfs_cwd(char *outp, size_t bufsize);
+
 int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath));
 
 #endif // _CC_FILES_H
@@ -21,11 +26,16 @@ int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *c
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
+#include <unistd.h>
 
 // set default logging
 #ifndef CC_LOGF
 #include <stdio.h>
 #define CC_LOGF printf
+#endif
+
+#ifdef _WIN32
+#include <windows.h>
 #endif
 
 time_t ccfs_last_modified_time(const char *filepath) {
@@ -34,6 +44,22 @@ time_t ccfs_last_modified_time(const char *filepath) {
         return -1;
     }
     return st.st_mtime;
+}
+
+bool ccfs_is_directory(const char *path) {
+    struct stat path_stat;
+    if (stat(path, &path_stat) != 0) {
+        return false; // Error occurred
+    }
+    return S_ISDIR(path_stat.st_mode);
+}
+
+bool ccfs_is_regular_file(const char *path) {
+    struct stat path_stat;
+    if (stat(path, &path_stat) != 0) {
+        return false; // Error accessing the file stats
+    }
+    return S_ISREG(path_stat.st_mode);
 }
 
 int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath)) {
@@ -74,6 +100,31 @@ int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *c
         }
     }
     closedir(dir);
+    return 0;
+}
+
+int ccfs_cwd(char *outp, size_t bufsize) {
+    if (outp == NULL) {
+        return EINVAL;
+    }
+    char cwd[PATH_MAX];
+    
+    #if defined(_WIN32) || defined(_WIN64)
+    if (GetCurrentDirectoryA(PATH_MAX, cwd) == 0) {
+        return GetLastError();
+    }
+    #elif defined(_POSIX_VERSION)
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        return errno;
+    }
+    #else
+    #error "Platform not supported"
+    #endif
+
+    int reqlen = snprintf(outp, bufsize, "%s", cwd);
+    if (reqlen >= (int)bufsize) {
+        return EINVAL;
+    }
     return 0;
 }
 
