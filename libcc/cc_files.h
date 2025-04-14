@@ -53,21 +53,21 @@ int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *c
         char filepath[PATH_MAX];
         int reqsize = snprintf(filepath, sizeof(filepath), "%s/%s", directory, entry->d_name);
 
-        if (reqsize >= sizeof(filepath)) {
+        if (reqsize >= (int)sizeof(filepath)) {
             CC_LOGF("Error: Filepath too long\n");
             CC_LOGF("%s/%s\n", directory, entry->d_name);
             closedir(dir);
             return -1;
         }
 
-        if (is_regular_file(filepath)) {
+        if (ccfs_is_regular_file(filepath)) {
             if (callback(ctx, filepath) == -1) {
                 closedir(dir);
                 return -1;
             }
 
-        } else if (is_directory(filepath)) {
-            if (iterate_files(filepath, ctx, callback) == -1) {
+        } else if (ccfs_is_regular_file(filepath)) {
+            if (ccfs_iterate_files(filepath, ctx, callback) == -1) {
                 closedir(dir);
                 return -1;
             }
