@@ -15,6 +15,7 @@ time_t ccfs_last_modified_time(const char *filepath);
 bool ccfs_is_regular_file(const char *path);
 bool ccfs_is_directory(const char *path);
 int ccfs_cwd(char *outp, size_t bufsize);
+int ccfs_mkdirp(const char *filename);
 
 int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath));
 
@@ -124,6 +125,36 @@ int ccfs_cwd(char *outp, size_t bufsize) {
     int reqlen = snprintf(outp, bufsize, "%s", cwd);
     if (reqlen >= (int)bufsize) {
         return EINVAL;
+    }
+    return 0;
+}
+
+bool create_directory(const char *path) {
+    #ifdef _WIN32
+        return CreateDirectory(path, NULL) || GetLastError() == ERROR_ALREADY_EXISTS;
+    #elif defined(_POSIX_VERSION)
+        return mkdir(path, 0755) == 0 || errno == EEXIST;
+    #else
+        #error "platform not supported."
+    #endif
+}
+
+int ccfs_mkdirp(const char *filename) {
+    if (filename==NULL) {
+        return EINVAL;
+    }
+    char dirpath[PATH_MAX];
+    snprintf(dirpath, sizeof dirpath, "%s", filename);
+
+    for (char *p = dirpath + 1; *p; ++p) {
+        if (*p == '/' || *p == '\\') {
+            *p = '\0';
+            create_directory(dirpath);
+            *p = '/';
+        }
+    }
+    if (!create_directory(dirpath)) {
+        return -1;
     }
     return 0;
 }
