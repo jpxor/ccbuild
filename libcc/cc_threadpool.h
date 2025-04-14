@@ -52,7 +52,6 @@ void cc_threadpool_stop_and_wait(struct cc_threadpool* pool);
 
 #endif // _CC_THREADPOOL_H
 
-#define CC_THREADPOOL_IMPLEMENTATION
 #ifdef CC_THREADPOOL_IMPLEMENTATION
 
 #include <assert.h>
