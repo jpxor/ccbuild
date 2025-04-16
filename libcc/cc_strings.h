@@ -98,9 +98,9 @@ ccstr * ccstrcpy(ccstr *s, const ccstr src) {
 }
 
 static inline
-ccstr * ccstrcat(ccstr *dest, const char *sep, const char *src) {
-    ccstrview sv_src = ccsv_raw(src);
-    return ccstr_append_join(dest, ccsv_raw(sep), &sv_src, 1);
+ccstr * ccstr_append(ccstr *dest, ccstrview sv) {
+    ccstrview sep = CCSTRVIEW_STATIC("");
+    return ccstr_append_join(dest, sep, &sv, 1);
 }
 
 static inline

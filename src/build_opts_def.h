@@ -72,7 +72,8 @@ bool append_opt(const char *optname) {
 static void general_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
     if (append_opt(key)) {
         if (def->flags & OPTDEF_APPEND) {
-            ccstrcat((ccstr*)optptr, " ", value);
+            ccstrview sv = ccsv_raw(value);
+            ccstr_append_join((ccstr*)optptr, CCSTRVIEW_STATIC(" "), &sv, 1);
         } else {
             printf("config error: append to %s not supported.\n", def->name);
             exit(1);
