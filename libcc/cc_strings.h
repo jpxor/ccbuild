@@ -122,6 +122,21 @@ void ccstr_free(ccstr *s) {
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
+
+// constructors
+
+ccstr ccstr_empty(int cap) {
+    ccstr str = {
+        .cstr = calloc(1, cap),
+        .cap = cap,
+        .len = 0,
+    };
+    if (str.cstr == NULL) {
+        str.cap = 0;
+    }
+    return str;
+}
+
 ccstr ccstr_rawlen(const char *raw, int len) {
     return *ccstrcpy_rawlen(&(ccstr){0}, raw, len);
 }
