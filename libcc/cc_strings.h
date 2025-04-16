@@ -91,6 +91,8 @@ int ccstrstr(ccstrview sv, ccstrview pattern);
 int ccstrchr(ccstrview sv, char c);
 int ccstrncmp(ccstrview str0, ccstrview str1, size_t n);
 
+size_t ccstr_realloc(ccstr *s, size_t newcap);
+
 static inline
 ccstr * ccstr_replace_raw(ccstr *s, const char *search, const char *replace) {
     return ccstr_replace(s, ccsv_raw((char *)search), ccsv_raw((char *)replace));
