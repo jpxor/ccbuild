@@ -267,6 +267,8 @@ int test_ccstr_append_join(void) {
     ccstrcpy_raw(&s, "zero");
     CHKEQ_PTR(ccstr_append_join(&s, sep, svlist, 3), &s);
     CHKEQ_STR(s.cstr, "zero one two three");
+
+    return 0;
 }
 
 int test_ccstrcasecmp(void) {
@@ -297,11 +299,13 @@ int test_ccstr_rawlen(void) {
     ccstr s = ccstr_rawlen("test string", 11);
     CHKEQ_STR(s.cstr, "test string");
     CHKEQ_INT(s.len, 11);
+    return 0;
 }
 
 int test_ccsv_charcount(void) {
     ccstrview sv = CCSTRVIEW_STATIC("0011001100");
     CHKEQ_INT(ccsv_charcount(sv, '0'), 6);
+    return 0;
 }
 
 int test_ccstrncmp(void) {
@@ -314,6 +318,7 @@ int test_ccstrncmp(void) {
     CHKEQ_INT(ccstrncmp(a, b, 9), '7' - '5');
     CHKEQ_INT(ccstrncmp(a, b, 20),'7' - '5');
     CHKEQ_INT(ccstrncmp(b, a, 7), '5' - '7');
+    return 0;
 }
 
 int test_ccsv_tokenize(void) {
