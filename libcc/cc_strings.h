@@ -126,6 +126,10 @@ ccstr ccstr_rawlen(const char *raw, int len) {
     return *ccstrcpy_rawlen(&(ccstr){0}, raw, len);
 }
 
+ccstr ccstrdup(ccstr src) {
+    return ccstr_rawlen(src.cstr, src.len);
+}
+
 // READONLY functions
 
 int ccstrchr(ccstrview sv, char c) {
