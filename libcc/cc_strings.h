@@ -122,6 +122,9 @@ void ccstr_free(ccstr *s) {
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
+ccstr ccstr_rawlen(const char *raw, int len) {
+    return *ccstrcpy_rawlen(&(ccstr){0}, raw, len);
+}
 
 // READONLY functions
 

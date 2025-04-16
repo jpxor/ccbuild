@@ -293,6 +293,12 @@ int test_ccstrcasecmp(void) {
     return 0;
 }
 
+int test_ccstr_rawlen(void) {
+    ccstr s = ccstr_rawlen("test string", 11);
+    CHKEQ_STR(s.cstr, "test string");
+    CHKEQ_INT(s.len, 11);
+}
+
 int main(void) {
     int err;
     
@@ -305,6 +311,7 @@ int main(void) {
     err |= test_ccstr_replace();
     err |= test_ccstr_append_join();
     err |= test_ccstrcasecmp();
+    err |= test_ccstr_rawlen();
 
     printf("[%s] test cc_strings\n", err? "FAILED": "PASSED");
     return 0;
