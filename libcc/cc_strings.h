@@ -71,6 +71,11 @@ ccstrview ccsv_raw(const char *raw) {
     };
 }
 
+// constructors
+ccstr ccstr_empty(int capacity);
+ccstr ccstrdup(ccstr src);
+ccstr ccstr_rawlen(const char *raw, int len);
+
 ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len);
 ccstr* ccstr_replace(ccstr *s, ccstrview search, ccstrview replace);
 ccstr* ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count);
