@@ -84,6 +84,7 @@ ccstrview ccsv_offset(ccstrview sv, uint32_t  offset);
 ccstrview ccsv_slice(ccstrview sv, uint32_t  offset, uint32_t  len);
 int ccstrcasecmp(ccstrview a, ccstrview b);
 int ccsv_strcount(ccstrview sv, ccstrview pattern);
+int ccsv_charcount(ccstrview sv, char c);
 int ccstrstr(ccstrview sv, ccstrview pattern);
 int ccstrchr(ccstrview sv, char c);
 
@@ -215,6 +216,17 @@ int ccsv_strcount(ccstrview sv, ccstrview pattern) {
     }
     return count;
 }
+
+int ccsv_charcount(ccstrview sv, char c) {
+    int count = 0;
+    for (size_t i = 0; i < sv.len; ++i) {
+        if (sv.cstr[i] == c) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 
 // READ/WRITE functions
 

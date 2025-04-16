@@ -299,6 +299,11 @@ int test_ccstr_rawlen(void) {
     CHKEQ_INT(s.len, 11);
 }
 
+int test_ccsv_charcount(void) {
+    ccstrview sv = CCSTRVIEW_STATIC("0011001100");
+    CHKEQ_INT(ccsv_charcount(sv, '0'), 6);
+}
+
 int main(void) {
     int err;
     
@@ -312,6 +317,7 @@ int main(void) {
     err |= test_ccstr_append_join();
     err |= test_ccstrcasecmp();
     err |= test_ccstr_rawlen();
+    err |= test_ccsv_charcount();
 
     printf("[%s] test cc_strings\n", err? "FAILED": "PASSED");
     return 0;
