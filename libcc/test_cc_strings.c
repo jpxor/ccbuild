@@ -304,6 +304,18 @@ int test_ccsv_charcount(void) {
     CHKEQ_INT(ccsv_charcount(sv, '0'), 6);
 }
 
+int test_ccstrncmp(void) {
+    ccstrview a = CCSTRVIEW_STATIC("123456789");
+    ccstrview b = CCSTRVIEW_STATIC("123456543");
+    CHKEQ_INT(ccstrncmp(a, b, 0), 0);
+    CHKEQ_INT(ccstrncmp(a, b, 1), 0);
+    CHKEQ_INT(ccstrncmp(a, b, 6), 0);
+    CHKEQ_INT(ccstrncmp(a, b, 7), '7' - '5');
+    CHKEQ_INT(ccstrncmp(a, b, 9), '7' - '5');
+    CHKEQ_INT(ccstrncmp(a, b, 20),'7' - '5');
+    CHKEQ_INT(ccstrncmp(b, a, 7), '5' - '7');
+}
+
 int main(void) {
     int err;
     
@@ -318,6 +330,7 @@ int main(void) {
     err |= test_ccstrcasecmp();
     err |= test_ccstr_rawlen();
     err |= test_ccsv_charcount();
+    err |= test_ccstrncmp();
 
     printf("[%s] test cc_strings\n", err? "FAILED": "PASSED");
     return 0;

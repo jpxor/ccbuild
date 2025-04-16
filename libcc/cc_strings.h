@@ -87,6 +87,7 @@ int ccsv_strcount(ccstrview sv, ccstrview pattern);
 int ccsv_charcount(ccstrview sv, char c);
 int ccstrstr(ccstrview sv, ccstrview pattern);
 int ccstrchr(ccstrview sv, char c);
+int ccstrncmp(ccstrview str0, ccstrview str1, size_t n);
 
 static inline
 ccstr * ccstr_replace_raw(ccstr *s, const char *search, const char *replace) {
@@ -227,6 +228,19 @@ int ccsv_charcount(ccstrview sv, char c) {
     return count;
 }
 
+int ccstrncmp(ccstrview str0, ccstrview str1, size_t n) {
+    size_t i;
+    for (i = 0; i < n && i < str0.len && i < str1.len; ++i) {
+        if (str0.cstr[i] != str1.cstr[i]) {
+            return (int)str0.cstr[i] - (int)str1.cstr[i];
+        }
+    }
+    if (i < n) {
+        if (i < str0.len) return 1;
+        if (i < str1.len) return -1;
+    }
+    return 0;
+}
 
 // READ/WRITE functions
 
