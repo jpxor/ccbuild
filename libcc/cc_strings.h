@@ -82,6 +82,8 @@ ccstr* ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count)
 
 ccstrview ccsv_offset(ccstrview sv, uint32_t  offset);
 ccstrview ccsv_slice(ccstrview sv, uint32_t  offset, uint32_t  len);
+ccstrview ccsv_tokenize(ccstrview *sv, char delim);
+
 int ccstrcasecmp(ccstrview a, ccstrview b);
 int ccsv_strcount(ccstrview sv, ccstrview pattern);
 int ccsv_charcount(ccstrview sv, char c);
@@ -376,6 +378,38 @@ ccstr * ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count
     }
     dest->cstr[dest->len] = 0;
     return dest;
+}
+
+ccstrview ccsv_tokenize(ccstrview *sv, char delim) {
+    ccstrview token = {0};
+    
+    // Skip leading delimiters
+    while (sv->len > 0 && sv->cstr[0] == delim) {
+        sv->cstr++;
+        sv->len--;
+    }
+    
+    // Find end of token
+    uint32_t pos = 0;
+    while (pos < sv->len && sv->cstr[pos] != delim) {
+        pos++;
+    }
+    
+    // Create token view
+    token.cstr = sv->cstr;
+    token.len = pos;
+    
+    // Advance original view
+    sv->cstr += pos;
+    sv->len -= pos;
+
+    // Skip leading delimiters (again)
+    while (sv->len > 0 && sv->cstr[0] == delim) {
+        sv->cstr++;
+        sv->len--;
+    }
+    
+    return token;
 }
 
 #endif // CC_STRINGS_IMPLEMENTATION

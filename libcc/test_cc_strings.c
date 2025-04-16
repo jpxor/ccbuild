@@ -316,6 +316,32 @@ int test_ccstrncmp(void) {
     CHKEQ_INT(ccstrncmp(b, a, 7), '5' - '7');
 }
 
+int test_ccsv_tokenize(void) {
+    ccstrview sv = CCSTRVIEW_STATIC("one two three");
+    ccstrview token;
+
+    token = ccsv_tokenize(&sv, ' ');
+    CHKEQ_STRN(token.cstr, token.len, "one");
+    CHKEQ_STRN(sv.cstr, sv.len, "two three");
+
+    token = ccsv_tokenize(&sv, ' ');
+    CHKEQ_STRN(token.cstr, token.len, "two");
+    CHKEQ_STRN(sv.cstr, sv.len, "three");
+
+    token = ccsv_tokenize(&sv, ' ');
+    CHKEQ_STRN(token.cstr, token.len, "three");
+    CHKEQ_STRN(sv.cstr, sv.len, "");
+    CHKEQ_INT(sv.len, 0);
+
+    token = ccsv_tokenize(&sv, ' ');
+    CHKEQ_STRN(token.cstr, token.len, "");
+    CHKEQ_STRN(sv.cstr, sv.len, "");
+    CHKEQ_INT(token.len, 0);
+    CHKEQ_INT(sv.len, 0);
+
+    return 0;
+}
+
 int main(void) {
     int err;
     
@@ -331,6 +357,7 @@ int main(void) {
     err |= test_ccstr_rawlen();
     err |= test_ccsv_charcount();
     err |= test_ccstrncmp();
+    err |= test_ccsv_tokenize();
 
     printf("[%s] test cc_strings\n", err? "FAILED": "PASSED");
     return 0;
