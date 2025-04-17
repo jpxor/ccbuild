@@ -90,7 +90,7 @@ int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *c
                 return -1;
             }
 
-        } else if (ccfs_is_regular_file(filepath)) {
+        } else if (ccfs_is_directory(filepath)) {
             if (ccfs_iterate_files(filepath, ctx, callback) == -1) {
                 closedir(dir);
                 return -1;
