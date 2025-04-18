@@ -27,7 +27,7 @@ static int is_compiler_available(const char *compiler) {
 
     #if defined(_WIN32) || defined(_WIN64)
     snprintf(command, sizeof(command), "%s --version >nul 2>nul", compiler);
-    #elif defined(_POSIX_VERSION)
+    #elif defined(_POSIX_VERSION) || defined(__linux__) || defined(__unix__)
     snprintf(command, sizeof(command), "%s --version > /dev/null 2>&1", compiler);
     #else
     #error Platform not supported.

@@ -10,6 +10,7 @@
  #define _BUILD_OPT_DEFS_H_
 
  #include <stdbool.h>
+ #include <stddef.h>
  #include <stdio.h>
  #include <assert.h>
  #include <errno.h>
