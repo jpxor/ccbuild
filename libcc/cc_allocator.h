@@ -9,6 +9,7 @@
 #define _CC_ALLOCATOR_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 // arena that wraps calloc/free
 struct cc_arena* cc_new_arena_calloc_wrapper(void);
@@ -124,7 +125,7 @@ bool guard_check(struct allocation *ptr) {
     }
     if (detected) {
         CC_LOGF("     : was allocated here: %s:%d (%s)\n", ptr->debug.file, ptr->debug.line, ptr->debug.function);
-        CC_LOGF("     : ptr 0x%p, size %llu bytes\n", ptr->block, ptr->debug.size);
+        CC_LOGF("     : ptr 0x%p, size %zu bytes\n", ptr->block, ptr->debug.size);
     }
     return detected;
 }

@@ -10,6 +10,8 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <string.h>
 
 time_t ccfs_last_modified_time(const char *filepath);
 bool ccfs_is_regular_file(const char *path);
@@ -111,7 +113,7 @@ int ccfs_cwd(char *outp, size_t bufsize) {
     if (GetCurrentDirectoryA(PATH_MAX, cwd) == 0) {
         return GetLastError();
     }
-    #elif defined(_POSIX_VERSION)
+    #elif defined(_POSIX_VERSION) || defined(__linux__) || defined(__unix__)
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         return errno;
     }
@@ -129,7 +131,7 @@ int ccfs_cwd(char *outp, size_t bufsize) {
 bool create_directory(const char *path) {
     #ifdef _WIN32
         return CreateDirectory(path, NULL) || GetLastError() == ERROR_ALREADY_EXISTS;
-    #elif defined(_POSIX_VERSION)
+    #elif defined(_POSIX_VERSION) || defined(__linux__) || defined(__unix__)
         return mkdir(path, 0755) == 0 || errno == EEXIST;
     #else
         #error "platform not supported."

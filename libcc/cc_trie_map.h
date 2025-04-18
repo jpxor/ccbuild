@@ -13,6 +13,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 struct cc_trie {
     // uses this arena for allocating nodes as needed,
