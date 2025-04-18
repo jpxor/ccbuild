@@ -85,11 +85,9 @@ jobs:
     - if: matrix.build-mode == 'manual'
       shell: bash
       run: |
-        echo 'If you are using a "manual" build mode for one or more of the' \
-          'languages you are analyzing, replace this with the commands to build' \
-          'your code, for example:'
-        echo '  make codeql'
-        exit 1
+        echo 'manual build mode using make'
+        make codeql
+        echo 'manual build complete'
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
