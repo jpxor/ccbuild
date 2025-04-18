@@ -1,6 +1,6 @@
 
 all:
-	gcc -Wall -Wextra -g -O0 -D_FORTIFY_SOURCE=2 -I. -I.. \
+	gcc -Wall -Wextra -g -O0 -D_FORTIFY_SOURCE=2 -I. \
 	./vendor/inih/ini.c \
 	./vendor/cwalk/cwalk.c \
 	./libcc/cc_strings.c \
