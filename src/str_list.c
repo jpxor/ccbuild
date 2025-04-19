@@ -62,12 +62,17 @@ int str_list_concat(struct str_list *list, char sep, char *dest, int destsize) {
     assert(list != NULL);
 
     pthread_mutex_lock(&list->mutex);
+    size_t final_size = list->nbytes + list->count + 1;
     if (dest == NULL) {
-        int result = list->nbytes;
         pthread_mutex_unlock(&list->mutex);
-        return result;
+        return final_size;
     }
     assert(destsize > 0);
+    if (list->count == 0) {
+        dest[0] = 0;
+        pthread_mutex_unlock(&list->mutex);
+        return final_size;
+    }
     char *endp = dest+destsize;
 
     struct str_list_node *itr = list->head;
@@ -83,9 +88,8 @@ int str_list_concat(struct str_list *list, char sep, char *dest, int destsize) {
         itr = itr->next;
     }
     dest[-1] = 0; // null terminate
-    int result = list->nbytes;
     pthread_mutex_unlock(&list->mutex);
-    return result;
+    return final_size;
 }
 
 int str_list_clear(struct str_list *list) {
