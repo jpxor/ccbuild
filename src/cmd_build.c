@@ -519,6 +519,7 @@ int build_target_cb(void *ctx, void *data) {
         link_libs(state);
     }
 
+    printf("\n");
     return 0;
 }
 
