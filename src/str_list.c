@@ -62,11 +62,12 @@ int str_list_concat(struct str_list *list, char sep, char *dest, int destsize) {
     assert(list != NULL);
 
     pthread_mutex_lock(&list->mutex);
-    if (dest == NULL || destsize <= 0) {
+    if (dest == NULL) {
         int result = list->nbytes;
         pthread_mutex_unlock(&list->mutex);
         return result;
     }
+    assert(destsize > 0);
     char *endp = dest+destsize;
 
     struct str_list_node *itr = list->head;
