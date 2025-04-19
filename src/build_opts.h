@@ -42,7 +42,7 @@ struct build_opts {
     enum target_type type;
 };
 
-struct cc_trie parse_build_opts(const char *filename);
+struct cc_trie parse_build_opts(ccstr rootdir);
 void print_config(const struct build_opts *bopts);
 
 #endif // _BUILD_OPTS_H_

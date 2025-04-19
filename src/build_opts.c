@@ -172,17 +172,29 @@ static int resolve_variables_cb(void *ctx, void *data) {
 }
 
 // TODO: what happens if no config file?
-struct cc_trie parse_build_opts(const char *filename) {
+struct cc_trie parse_build_opts(ccstr rootdir) {
+    ccstrview confname = CCSTRVIEW_STATIC("cc.conf");
+    ccstr *config_filepath = ccstr_append_join(&rootdir, CCSTRVIEW_STATIC("/"), &confname, 1);
+
     // init globals
     if (!g_opts_allocator) {
         g_opts_allocator = cc_new_arena_calloc_wrapper();
-        g_default_bopts.lastmodified = ccfs_last_modified_time(filename);
+        g_default_bopts.lastmodified = ccfs_last_modified_time(config_filepath->cstr);
     }
     struct cc_trie target_opts_map = {
         .arena = g_opts_allocator,
     };
 
-    ini_parse(filename, parse_opts_cb, &target_opts_map);
+    ini_parse(config_filepath->cstr, parse_opts_cb, &target_opts_map);
+    if (target_opts_map.root == NULL) {
+        resolve_default_cc();
+
+        struct build_opts *default_opts = cc_alloc(target_opts_map.arena, sizeof *default_opts);
+        init_opts(default_opts, "");
+
+        cc_trie_insert(&target_opts_map, CC_TRIE_STR_KEY("default"), default_opts);
+    }
+
     foreach_target(&target_opts_map, resolve_variables_cb);
     return target_opts_map;
 }
