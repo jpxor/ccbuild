@@ -63,6 +63,9 @@ int set_root_and_build_paths(struct build_state *state) {
     }
     state->buildir.len = reqlen;
 
+    // all paths should be relative to project root (?)
+    ccfs_chdir(state->rootdir.cstr);
+
     printf("rootdir='%s'\n", state->rootdir.cstr);
     printf("buildir='%s'\n", state->buildir.cstr);
     return EOK;

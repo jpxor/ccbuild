@@ -18,6 +18,7 @@ bool ccfs_is_regular_file(const char *path);
 bool ccfs_is_directory(const char *path);
 int ccfs_cwd(char *outp, size_t bufsize);
 int ccfs_mkdirp(const char *filename);
+int ccfs_chdir(const char *path);
 
 int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath));
 
@@ -126,6 +127,19 @@ int ccfs_cwd(char *outp, size_t bufsize) {
         return EINVAL;
     }
     return 0;
+}
+
+int ccfs_chdir(const char *path) {
+    #if defined(_WIN32) || defined(_WIN64)
+    if (SetCurrentDirectoryA(path) == 0) {
+        return GetLastError();
+    }
+    return 0;
+    #elif defined(_POSIX_VERSION) || defined(__linux__) || defined(__unix__)
+    return chdir(path);
+    #else
+    #error "Platform not supported"
+    #endif
 }
 
 bool create_directory(const char *path) {
