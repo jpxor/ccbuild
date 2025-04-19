@@ -54,11 +54,15 @@ int set_root_and_build_paths(struct build_state *state) {
         printf("error: filepath too long (op: get_absolute)\n");
         return EXIT_FAILURE;
     }
+    state->rootdir.len = reqlen;
+
     reqlen = cwk_path_join(state->rootdir.cstr, "build", state->buildir.cstr, state->buildir.cap);
     if (reqlen >= state->buildir.cap) {
         printf("error: filepath too long (op: join)\n");
         return EXIT_FAILURE;
     }
+    state->buildir.len = reqlen;
+
     printf("rootdir='%s'\n", state->rootdir.cstr);
     printf("buildir='%s'\n", state->buildir.cstr);
     return EOK;
@@ -522,7 +526,7 @@ int cc_build(struct cmdopts *cmdopts) {
     int err = set_root_and_build_paths(&state);
     if (err) return EXIT_FAILURE;
 
-    state.optsmap = parse_build_opts("./cc.opts");
+    state.optsmap = parse_build_opts(state.rootdir);
     foreach_target(&state, build_target_cb);
     return EXIT_SUCCESS;
 }
@@ -549,7 +553,7 @@ int cc_build(struct cmdopts *cmdopts) {
 // }
 
 int cc_clean(struct cmdopts *cmdopts) {
-    (void)cmdopts; 
+    (void)cmdopts;
     // struct build_state state = {
     //     .cmdopts = *cmdopts,
     // };
