@@ -187,6 +187,10 @@ int link_object_files_cb(void *ctx, char *main_obj) {
     char *extpos = strchr(base_name_ptr, '.');
     ccstr name = ccstr_rawlen(base_name_ptr, extpos-base_name_ptr);
 
+    if (state->target_build_opts->installdir.len == 0) {
+        ccstr_append(&state->target_build_opts->installdir, CCSTRVIEW_STATIC("/"));
+    }
+
     const char *path_segments[] = {
         state->target_build_opts->install_root.cstr,
         state->target_build_opts->installdir.cstr,
@@ -233,6 +237,10 @@ int link_libs(struct build_state *state) {
         ccstr_append(&tmp, ccsv(&bopts->libname));
         ccstrcpy(&bopts->libname, tmp);
         ccstr_free(&tmp);
+    }
+
+    if (bopts->installdir.len == 0) {
+        ccstr_append(&bopts->installdir, CCSTRVIEW_STATIC("/"));
     }
 
     const char *path_segments[] = {
