@@ -154,7 +154,7 @@ static int resolve_variables_cb(void *ctx, void *data) {
 
             size_t max_loops = 10;
             for (size_t j = 0;; ++j) {
-                ccstrview var = find_variable(ccsv(optval));
+                ccstr var = find_variable(ccsv(optval));
                 if (var.len == 0) {
                     break;
                 }
@@ -162,9 +162,11 @@ static int resolve_variables_cb(void *ctx, void *data) {
                     printf("config error: failed to resolve variable '%.*s'\n", var.len, var.cstr);
                     exit(1);
                 }
-                ccstrview varname = ccsv_slice(var, 2, var.len - 3);
+                ccstrview varname = ccsv_slice(ccsv(&var), 2, var.len - 3);
                 ccstrview value = get_var_value(build_option_defs, opts, varname);
-                ccstr_replace(optval, var, value);
+
+                ccstr_replace(optval, ccsv(&var), value);
+                ccstr_free(&var);
             }
         }
     }

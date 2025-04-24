@@ -67,26 +67,21 @@ static char* find_compiler(const char *compiler_list) {
     exit(1);
 }
 
-// Detects a variable in the format $(VARNAME) and returns it as a ccstrview
-// Returns a zero-length ccstrview if no variable is found
-static ccstrview find_variable(ccstrview sv) {
-    ccstrview result = {0};
-
+// Detects a variable in the format $(VARNAME) and returns a copy of it
+// Returns a zero-length ccstr if no variable is found
+static ccstr find_variable(ccstrview sv) {
     if (!sv.cstr || sv.len == 0) {
-        return result;
+        return ccstr_empty(0);
     }
     int start = ccstrstr(sv, CCSTRVIEW_STATIC("$("));
     if (start == -1) {
-        return result;
+        return ccstr_empty(0);
     }
     int end = ccstrstr(ccsv_offset(sv, start), CCSTRVIEW_STATIC(")"));
     if (end == -1) {
-        return result;
+        return ccstr_empty(0);
     }
-    return (ccstrview) {
-        .cstr = sv.cstr + start,
-        .len = end + 1,
-    };
+    return ccstr_rawlen(sv.cstr + start, end + 1);
 }
 
 // the build order of targets can be specified by adding
