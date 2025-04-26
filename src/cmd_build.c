@@ -205,7 +205,8 @@ int link_object_files_cb(void *ctx, char *main_obj) {
     cwk_path_get_dirname(binpath, &dirname_len);
 
     char tmpdirpath[PATH_MAX];
-    strncpy(tmpdirpath, binpath, dirname_len);
+    strncpy(tmpdirpath, binpath, dirname_len-1);
+    tmpdirpath[dirname_len-1] = 0;
     ccfs_mkdirp(tmpdirpath);
 
     ccstr_free(&name);
@@ -257,7 +258,8 @@ int link_libs(struct build_state *state) {
     cwk_path_get_dirname(binpath, &dirname_len);
 
     char tmpdirpath[PATH_MAX];
-    strncpy(tmpdirpath, binpath, dirname_len);
+    strncpy(tmpdirpath, binpath, dirname_len-1);
+    tmpdirpath[dirname_len-1] = 0;
     ccfs_mkdirp(tmpdirpath);
 
     int ret = EOK;
@@ -426,7 +428,8 @@ int compile_translation_unit_cb(void *ctx, void *data) {
         cwk_path_get_dirname(objpath, &dirname_size);
 
         char tmpdirpath[PATH_MAX];
-        strncpy(tmpdirpath, objpath, dirname_size);
+        strncpy(tmpdirpath, objpath, dirname_size-1);
+        tmpdirpath[dirname_size-1] = 0;
         ccfs_mkdirp(tmpdirpath);
 
     }
