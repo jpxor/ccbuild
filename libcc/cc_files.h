@@ -69,7 +69,7 @@ bool ccfs_is_regular_file(const char *path) {
 int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath)) {
     DIR *dir = opendir(directory);
     if (!dir) {
-        CC_LOGF("Error: Unable to open directory %s\n", directory);
+        CC_LOGF("Error: Unable to open directory %s, %s\n", directory, strerror(errno));
         return -1;
     }
     struct dirent *entry;
