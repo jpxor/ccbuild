@@ -54,7 +54,7 @@ int test_submit(void) {
 }
 
 int main(void) {
-    int err;
+    int err = 0;
     
     err |= test_init();
     err |= test_submit();
