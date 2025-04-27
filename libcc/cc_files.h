@@ -19,6 +19,7 @@ bool ccfs_is_directory(const char *path);
 int ccfs_cwd(char *outp, size_t bufsize);
 int ccfs_mkdirp(const char *filename);
 int ccfs_chdir(const char *path);
+int ccfs_rmdir_recursive(const char *path);
 
 int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath));
 
@@ -152,6 +153,46 @@ bool create_directory(const char *path) {
     #endif
 }
 
+int delete_empty_directory(const char *path) {
+    #ifdef _WIN32
+        if (RemoveDirectory(path)) {
+            return 0;
+        } else {
+            CC_LOGF("failed to delete directory: %s\n", path);
+            return -1;
+        }
+    #elif defined(_POSIX_VERSION) || defined(__linux__) || defined(__unix__)
+        if (rmdir(path) == 0) {
+            return 0;
+        } else {
+            CC_LOGF("failed to delete directory: %s\n", path);
+            return -1;
+        }
+    #else
+        #error "platform not supported."
+    #endif
+}
+
+int delete_file(const char *path) {
+    #ifdef _WIN32
+        if (DeleteFile(path)) {
+            return 0;
+        } else {
+            CC_LOGF("failed to delete file: %s\n", path);
+            return -1;
+        }
+    #elif defined(_POSIX_VERSION) || defined(__linux__) || defined(__unix__)
+        if (unlink(path) == 0) {
+            return 0;
+        } else {
+            perror("Failed to delete file");
+            return -1;
+        }
+    #else
+        #error "platform not supported."
+    #endif
+}
+
 int ccfs_mkdirp(const char *filename) {
     if (filename==NULL) {
         return EINVAL;
@@ -169,6 +210,39 @@ int ccfs_mkdirp(const char *filename) {
     if (!create_directory(dirpath)) {
         return -1;
     }
+    return 0;
+}
+
+int ccfs_rmdir_recursive(const char *directory) {
+    DIR *dir = opendir(directory);
+    if (!dir) {
+        CC_LOGF("Error: Unable to open directory %s, %s\n", directory, strerror(errno));
+        return -1;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        char filepath[PATH_MAX];
+        int reqsize = snprintf(filepath, sizeof(filepath), "%s/%s", directory, entry->d_name);
+
+        if (reqsize >= (int)sizeof(filepath)) {
+            CC_LOGF("Error: Filepath too long\n");
+            CC_LOGF("%s/%s\n", directory, entry->d_name);
+            closedir(dir);
+            return -1;
+        }
+
+        if (ccfs_is_regular_file(filepath)) {
+            delete_file(filepath);
+
+        } else if (ccfs_is_directory(filepath)) {
+            ccfs_rmdir_recursive(filepath);
+            delete_empty_directory(filepath);
+        }
+    }
+    closedir(dir);
     return 0;
 }
 

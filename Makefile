@@ -10,4 +10,5 @@ codeql:
 	./src/str_list.c \
 	./src/build_opts.c \
 	./src/cmd_build.c \
+	./src/cmd_clean.c \
 	./src/main.c -o cc

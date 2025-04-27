@@ -13,6 +13,7 @@ gcc -O2 -I. \
 	./src/str_list.c \
 	./src/build_opts.c \
 	./src/cmd_build.c \
+	./src/cmd_clean.c \
 	./src/main.c -o ./install/bootstrap/cc
 
 export $PATH=$PATH:${PWD}/install/bootstrap

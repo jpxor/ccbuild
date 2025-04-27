@@ -12,6 +12,7 @@ New-Item -Path ".\install\bootstrap" -ItemType Directory -Force
     .\src\str_list.c `
     .\src\build_opts.c `
     .\src\cmd_build.c `
+    .\src\cmd_clean.c `
     .\src\main.c -o .\install\bootstrap\cc.exe
 
 # Add the install path to the PATH environment variable for the current session

@@ -40,37 +40,6 @@ struct fid_ctx {
 static
 int compile_translation_unit_cb(void *ctx, void *data);
 
-static
-int set_root_and_build_paths(struct build_state *state) {
-    char cwd[PATH_MAX];
-    ccfs_cwd(cwd, sizeof cwd);
-
-    // TODO: make ccstr wrapper around cwalk funcs
-    ccstr_realloc(&state->rootdir, 4096);
-    ccstr_realloc(&state->buildir, 4096);
-
-    size_t reqlen = cwk_path_get_absolute(cwd, state->cmdopts.rootdir, state->rootdir.cstr, state->rootdir.cap);
-    if (reqlen >= state->rootdir.cap) {
-        printf("error: filepath too long (op: get_absolute)\n");
-        return EXIT_FAILURE;
-    }
-    state->rootdir.len = reqlen;
-
-    reqlen = cwk_path_join(state->rootdir.cstr, "build", state->buildir.cstr, state->buildir.cap);
-    if (reqlen >= state->buildir.cap) {
-        printf("error: filepath too long (op: join)\n");
-        return EXIT_FAILURE;
-    }
-    state->buildir.len = reqlen;
-
-    // all paths should be relative to project root (?)
-    ccfs_chdir(state->rootdir.cstr);
-
-    printf("rootdir='%s'\n", state->rootdir.cstr);
-    printf("buildir='%s'\n", state->buildir.cstr);
-    return EOK;
-}
-
 
 #include <stdio.h> // FILE
 static
@@ -544,37 +513,4 @@ int cc_build(struct cmdopts *cmdopts) {
     state.optsmap = parse_build_opts(state.rootdir);
     foreach_target(&state, build_target_cb);
     return EXIT_SUCCESS;
-}
-
-
-// CLEAN ////////////////////////////////////////////////////////////
-
-// int delete_object_files_cb(void *ctx, const char *filepath) {
-//     const char *ext = NULL;
-//     size_t extlen = 0;
-//     (void)ctx;
-
-//     if (cwk_path_get_extension(filepath, &ext, &extlen)
-//     && strcmp(ext, ".o") == 0) {
-//         printf("rm %s\n", filepath);
-//         futils_rm(filepath);
-//     }
-//     return 0;
-// }
-
-// int delete_object_files(const char *dir) {
-//     iterate_files(dir, NULL, delete_object_files_cb);
-//     return EXIT_SUCCESS;
-// }
-
-int cc_clean(struct cmdopts *cmdopts) {
-    (void)cmdopts;
-    // struct build_state state = {
-    //     .cmdopts = *cmdopts,
-    // };
-    // int err = set_root_and_build_paths(&state);
-    // if (err) return EXIT_FAILURE;
-
-    // return delete_object_files(state.buildir);
-    return -1;
 }
