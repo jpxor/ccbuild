@@ -98,7 +98,7 @@ int cc_threadpool_init(struct cc_threadpool* pool, size_t nthreads) {
     assert(pool != NULL);
 
     if (nthreads > CC_THREADPOOL_MAX_THREADS) {
-        printf("error: reached max threads: CC_THREADPOOL_MAX_THREADS=%zu\n", nthreads);
+        printf("error: reached max threads: CC_THREADPOOL_MAX_THREADS(%zd) > nthreads(%zu)\n", CC_THREADPOOL_MAX_THREADS, nthreads);
         printf("       can rebuild with custom define CC_THREADPOOL_MAX_THREADS\n");
         printf("       to increase limit\n");
         return EINVAL;
