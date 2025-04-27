@@ -89,6 +89,9 @@ void* cc_alloc(struct cc_arena *a,  size_t size) {
 
 #define MAGIC 0xCCA110C2025
 
+// offset bytes from void ptr
+#define PTR_OFFSET(ptr, offset) ((void*)((intptr_t)(ptr) + (offset)))
+
 struct allocation {
     struct allocation *next;
 #ifndef NDEBUG
@@ -135,7 +138,7 @@ void cc_arena_debug_outofbounds_check(void *rawptr, int do_abort) {
     (void)rawptr;
     (void)do_abort;
 #ifndef NDEBUG
-    struct allocation *ptr = rawptr - offsetof(struct allocation, block);
+    struct allocation *ptr = PTR_OFFSET(rawptr, -offsetof(struct allocation, block));
     if (guard_check(ptr) && do_abort) {
         abort();
     }
@@ -295,7 +298,7 @@ void* bump_alloc(struct cc_arena *a, size_t size, struct cc_alloc_debug_info deb
     size_t required_size = arena->used_size + aligned_size;
     if (required_size > arena->committed_size) {
 
-        void* commit_addr = arena->base + arena->committed_size;
+        void* commit_addr = PTR_OFFSET(arena->base, arena->committed_size);
         size_t commit_size = ((required_size - arena->committed_size + BUMP_BLOCK_SIZE - 1) 
                              & ~(BUMP_BLOCK_SIZE - 1));
         
@@ -310,7 +313,7 @@ void* bump_alloc(struct cc_arena *a, size_t size, struct cc_alloc_debug_info deb
     }
 
     // bump
-    struct allocation *next = arena->base + arena->used_size;
+    struct allocation *next = PTR_OFFSET(arena->base, arena->used_size);
     arena->used_size += aligned_size;
 
     next->next = arena->wrapped_arena.node;
