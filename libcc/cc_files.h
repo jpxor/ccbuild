@@ -67,42 +67,44 @@ bool ccfs_is_regular_file(const char *path) {
     return S_ISREG(path_stat.st_mode);
 }
 
-int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath)) {
-    DIR *dir = opendir(directory);
-    if (!dir) {
-        CC_LOGF("Error: Unable to open directory %s, %s\n", directory, strerror(errno));
-        return -1;
-    }
+static int iterate_dirent(DIR *dir, const char *dirname, void *ctx, int (*callback)(void *ctx, const char *filepath)) {
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
         char filepath[PATH_MAX];
-        int reqsize = snprintf(filepath, sizeof(filepath), "%s/%s", directory, entry->d_name);
+        int reqsize = snprintf(filepath, sizeof(filepath), "%s/%s", dirname, entry->d_name);
 
         if (reqsize >= (int)sizeof(filepath)) {
             CC_LOGF("Error: Filepath too long\n");
-            CC_LOGF("%s/%s\n", directory, entry->d_name);
-            closedir(dir);
+            CC_LOGF("%s/%s\n", dirname, entry->d_name);
             return -1;
         }
 
         if (ccfs_is_regular_file(filepath)) {
             if (callback(ctx, filepath) == -1) {
-                closedir(dir);
                 return -1;
             }
 
         } else if (ccfs_is_directory(filepath)) {
             if (ccfs_iterate_files(filepath, ctx, callback) == -1) {
-                closedir(dir);
                 return -1;
             }
         }
     }
-    closedir(dir);
     return 0;
+}
+
+int ccfs_iterate_files(const char *directory, void *ctx, int (*callback)(void *ctx, const char *filepath)) {
+    DIR *dir = opendir(directory);
+    if (!dir) {
+        CC_LOGF("Error: Unable to open directory %s, %s\n", directory, strerror(errno));
+        return -1;
+    }
+    int ret = iterate_dirent(dir, directory, ctx, callback);
+    closedir(dir);
+    return ret;
 }
 
 int ccfs_cwd(char *outp, size_t bufsize) {
