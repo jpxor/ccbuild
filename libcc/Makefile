@@ -1,14 +1,5 @@
-
-all: build_all
-
+all: tests
 tests: test_strings test_alloc test_trie test_threadpool
-
-build_all:
-	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_allocator.c
-	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_trie_map.c
-	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_strings.c
-	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_files.c
-	gcc -c -Wall -Wextra -g -O2 -D_FORTIFY_SOURCE=2 -DNDEBUG cc_threadpool.c
 
 test_strings:
 	gcc -g -O0 -DNDEBUG test_cc_strings.c -o test_strings
@@ -19,7 +10,7 @@ test_alloc:
 	@test_alloc
 
 test_trie:
-	gcc -g -O0 test_cc_trie_map.c -o test_trie
+	gcc -I.. -g -O0 test_cc_trie_map.c -o test_trie
 	@test_trie
 
 test_threadpool:
