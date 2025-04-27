@@ -18,5 +18,5 @@ New-Item -Path ".\install\bootstrap" -ItemType Directory -Force
 # Add the install path to the PATH environment variable for the current session
 $env:PATH += ";$(Get-Location)\install\bootstrap"
 
-Write-Host "Program compiled and PATH updated for this session."
-Write-Host "Command 'cc' is now available."
+Write-Output "Program compiled and PATH updated for this session."
+Write-Output "Command 'cc' is now available."
