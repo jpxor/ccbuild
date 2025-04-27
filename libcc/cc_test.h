@@ -1,6 +1,6 @@
 
-#ifndef _CCTEST_H
-#define _CCTEST_H
+#ifndef CCTEST_H
+#define CCTEST_H
 
 #include <stdio.h>
 #include <string.h>
@@ -84,4 +84,4 @@ static inline int cctest_ptr_equals(struct cctest_ctx ctx, char *gotstr, void *g
 if (cctest_ptr_equals((cctest_ctx_t){.file=__FILE__,.test=__func__,.line=__LINE__}, #got, got, #exp, exp) == -1) {return -1;}
 
 
-#endif // _CCTEST_H
+#endif // CCTEST_H
