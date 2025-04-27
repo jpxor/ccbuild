@@ -67,6 +67,20 @@ bool ccfs_is_regular_file(const char *path) {
     return S_ISREG(path_stat.st_mode);
 }
 
+static int iterate_dirent_file_handler(const char *filepath, void *ctx, int (*callback)(void *ctx, const char *filepath)) {
+    if (ccfs_is_regular_file(filepath)) {
+        if (callback(ctx, filepath) == -1) {
+            return -1;
+        }
+    } else if (ccfs_is_directory(filepath)) {
+        if (ccfs_iterate_files(filepath, ctx, callback) == -1) {
+            return -1;
+        }
+    }
+    // ignore any other file types for now
+    return 0;
+}
+
 static int iterate_dirent(DIR *dir, const char *dirname, void *ctx, int (*callback)(void *ctx, const char *filepath)) {
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL) {
@@ -81,16 +95,8 @@ static int iterate_dirent(DIR *dir, const char *dirname, void *ctx, int (*callba
             CC_LOGF("%s/%s\n", dirname, entry->d_name);
             return -1;
         }
-
-        if (ccfs_is_regular_file(filepath)) {
-            if (callback(ctx, filepath) == -1) {
-                return -1;
-            }
-
-        } else if (ccfs_is_directory(filepath)) {
-            if (ccfs_iterate_files(filepath, ctx, callback) == -1) {
-                return -1;
-            }
+        if (iterate_dirent_file_handler(filepath, ctx, callback) == -1) {
+            return -1;
         }
     }
     return 0;
