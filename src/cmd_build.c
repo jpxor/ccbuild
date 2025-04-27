@@ -47,7 +47,7 @@ void foreach_include_directive(void *ctx, const char *srcpath, int (*callback)(v
     FILE *file = fopen(srcpath, "r");
     if (!file) {
         // failure here could simply mean the header is from outside
-        // the project (extra includes). We'll skip these for now, assuming
+        // the project (systems includes). We'll skip these, assuming
         // they wont change (often)
         return;
     }
@@ -332,7 +332,7 @@ int foreach_src_file(struct build_state *state, ccstr srcpaths, int (*callback)(
     while (sv.len > 0) {
         path = ccsv_tokenize(&sv, ' ');
 
-        char pathstr[PATH_MAX];
+        char pathstr[PATH_MAX] = {0};
         memcpy(pathstr, path.cstr, path.len);
         if (ccfs_iterate_files(pathstr, state, callback) == -1) {
             return -1;
