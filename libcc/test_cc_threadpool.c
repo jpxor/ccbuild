@@ -6,6 +6,7 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
+#define CC_THREADPOOL_MAX_THREADS 8
 #define CC_THREADPOOL_IMPLEMENTATION
 #include "cc_threadpool.h"
 
