@@ -6,8 +6,10 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
+// NDEBUG needs to be defined to test null cases which are normally
+// caught via asserts during development
 #ifndef NDEBUG
-#error NDEBUG needs to be defined to test null cases which are normally caught via asserts
+#define NDEBUG
 #endif
 
 #define CC_STRINGS_IMPLEMENTATION
@@ -348,7 +350,7 @@ int test_ccsv_tokenize(void) {
 }
 
 int main(void) {
-    int err;
+    int err = 0;
     
     err |= test_ccstrcpy_rawlen();
     err |= test_ccstrchr();
