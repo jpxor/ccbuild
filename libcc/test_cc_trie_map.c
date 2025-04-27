@@ -13,6 +13,8 @@
 #include "cc_allocator.h"
 
 #include <stdio.h>
+
+#pragma GCC diagnostic ignored "-Wpointer-sign"
 #include "libcc/cc_test.h"
 
 struct iterate_ctx {
