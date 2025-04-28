@@ -38,7 +38,7 @@ static inline int cctest_int_not_equals(struct cctest_ctx ctx, char *gotstr, int
     if (got == exp) {
         cctest_print_context(ctx);
         printf(" > GOT %s = %d\n", gotstr, got);
-        printf(" > EXP %s = %d\n", expstr, exp);
+        printf(" > EXP %s != %d\n", expstr, exp);
         return -1;
     }
     return 0;
