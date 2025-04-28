@@ -14,6 +14,8 @@
 
 #include <stdio.h>
 
+// Ensures each path in a space-separated path list has the specified prefix.
+// exmaple: include paths with -I prefix, lib paths with -L prefix
 static ccstr tidy_pathlist(ccstr inclist, ccstrview prefix) {
     ccstrview sv = ccsv(&inclist);
     ccstrview path;
@@ -44,6 +46,7 @@ static ccstr tidy_pathlist(ccstr inclist, ccstrview prefix) {
     return newincpaths;
 }
 
+// fill in the per-target level predefined compile command template placeholders
 static void resolve_compile_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct build_opts *opts) {
     if (cmdopts->release) {
         ccstr_replace(cmd, ccsv_raw("[DEBUG_OR_RELEASE]"), ccsv(&opts->release));
@@ -53,13 +56,14 @@ static void resolve_compile_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct buil
     ccstr_replace(cmd, ccsv_raw("-I[INCPATHS]"), ccsv(&opts->incpaths));
 }
 
+// fill in the per-target level predefined link command template placeholders
 static void resolve_link_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct build_opts *opts) {
     (void)cmdopts;
     ccstr_replace(cmd, ccsv_raw("-L[LIBPATHS]"), ccsv(&opts->libpaths));
 }
 
-static
-int build_target_cb(void *ctx, void *data) {
+// callback, executed on each build target to initiate a build
+static int build_target_cb(void *ctx, void *data) {
     struct build_state *state = ctx;
     struct build_opts *opts = data;
 
