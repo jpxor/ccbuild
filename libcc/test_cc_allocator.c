@@ -43,9 +43,9 @@ static void test_basic_alloc(struct cc_arena*(*make_arena)(void)) {
     memset(ptr2, 0x00, 1024);
     assert(memcmp(ptr1, &test, 16) == 0);
 
-    struct allocation *a0 = (struct allocation *)(ptr0 - sizeof(struct allocation));
-    struct allocation *a1 = (struct allocation *)(ptr1 - sizeof(struct allocation));
-    struct allocation *a2 = (struct allocation *)(ptr2 - sizeof(struct allocation));
+    struct allocation *a0 = PTR_OFFSET(ptr0, -sizeof(struct allocation));
+    struct allocation *a1 = PTR_OFFSET(ptr1, -sizeof(struct allocation));
+    struct allocation *a2 = PTR_OFFSET(ptr2, -sizeof(struct allocation));
 
     assert(base_arena->node == a2 || base_arena->node == a0);
     assert(base_arena->total_allocated_bytes == 16+1024);
@@ -92,9 +92,9 @@ static void test_guard_check(struct cc_arena*(*make_arena)(void)) {
     assert(ptr1 != NULL);
     assert(ptr2 != NULL);
     
-    struct allocation *a0 = (struct allocation *)(ptr0 - sizeof(struct allocation));
-    struct allocation *a1 = (struct allocation *)(ptr1 - sizeof(struct allocation));
-    struct allocation *a2 = (struct allocation *)(ptr2 - sizeof(struct allocation));
+    struct allocation *a0 = PTR_OFFSET(ptr0, -sizeof(struct allocation));
+    struct allocation *a1 = PTR_OFFSET(ptr1, -sizeof(struct allocation));
+    struct allocation *a2 = PTR_OFFSET(ptr2, -sizeof(struct allocation));
 
     assert(guard_check(a0) == false);
     assert(guard_check(a1) == false);
@@ -105,10 +105,10 @@ static void test_guard_check(struct cc_arena*(*make_arena)(void)) {
     assert(guard_check(a0) == true);
     
     // check for out of bounds writes
-    memset(ptr1+1, 0x01, 128);
+    memset(PTR_OFFSET(ptr1, +1), 0x01, 128);
     assert(guard_check(a1) == true);
 
-    memset(ptr2-1, 0x01, 128);
+    memset(PTR_OFFSET(ptr2, -1), 0x01, 128);
     assert(guard_check(a2) == true);
     
     cc_free_all(arena);
