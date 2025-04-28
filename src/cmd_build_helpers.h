@@ -1,0 +1,118 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * Copyright (c) 2025 Josh Simonot
+ */
+
+#ifndef CMD_BUILD_HELPERS_H
+#define CMD_BUILD_HELPERS_H
+
+#include "cmd.h"
+#include "str_list.h"
+
+#include "libcc/cc_strings.h"
+#include "libcc/cc_files.h"
+
+#include <stdio.h>
+
+static inline
+void foreach_target(struct build_state *state, int (*callback)(void *ctx, void *data)) {
+    cc_trie_iterate(&state->optsmap, state, callback);
+}
+
+static inline
+void foreach_main_file(struct build_state *state, int (*callback)(void *ctx, char *str)) {
+    str_list_iterate(&state->main_files, state, callback);
+}
+
+static
+int foreach_src_file(struct build_state *state, ccstr srcpaths, int (*callback)(void *ctx, const char *data)) {
+    ccstrview sv = ccsv(&srcpaths);
+    ccstrview path;
+
+    while (sv.len > 0) {
+        path = ccsv_tokenize(&sv, ' ');
+
+        char pathstr[PATH_MAX] = {0};
+        memcpy(pathstr, path.cstr, path.len);
+        if (ccfs_iterate_files(pathstr, state, callback) == -1) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static
+void foreach_include_directive(void *ctx, const char *srcpath, int (*callback)(void *ctx, const char *header)) {
+    FILE *file = fopen(srcpath, "r");
+    if (!file) {
+        // failure here could simply mean the header is from outside
+        // the project (systems includes). We'll skip these, assuming
+        // they wont change (often)
+        return;
+    }
+    char line[1024];
+    while (fgets(line, sizeof(line), file)) {
+
+        if (strncmp(line, "#include", 8) == 0) {
+            // get the included file name
+            char *start = strchr(line, '<');
+            if (!start) {
+                start = strchr(line, '"');
+            }
+            if (start) {
+                char *end = strchr(start + 1, (start[0] == '<') ? '>' : '"');
+                if (end) {
+                    *end = '\0';
+                    callback(ctx, start+1);
+                }
+            }
+        }
+    }
+    fclose(file);
+}
+
+static
+bool has_entry_point(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Unable to open file");
+        return false;
+    }
+    char line[1024];
+    bool in_string = false;
+    bool in_comment = false;
+    bool in_multiline_comment = false;
+    while (fgets(line, sizeof(line), file)) {
+        for (int i = 0; line[i] != '\0'; i++) {
+            if (!in_multiline_comment && !in_comment && line[i] == '\"' && (i == 0 || line[i-1] != '\\')) {
+                in_string = !in_string;
+            }
+            if (!in_string && !in_multiline_comment && line[i] == '/' && line[i+1] == '/') {
+                in_comment = true;
+                break;
+            }
+            if (!in_string && !in_multiline_comment && line[i] == '/' && line[i+1] == '*') {
+                in_multiline_comment = true;
+                i++;
+                continue;
+            }
+            if (!in_string && in_multiline_comment && line[i] == '*' && line[i+1] == '/') {
+                in_multiline_comment = false;
+                i++;
+                continue;
+            }
+            if (!in_string && !in_comment && !in_multiline_comment && strncmp(line + i, "int main(", 9) == 0) {
+                fclose(file);
+                return true;
+            }
+        }
+        in_comment = false;
+    }
+    fclose(file);
+    return false;
+}
+
+#endif // CMD_BUILD_HELPERS_H
