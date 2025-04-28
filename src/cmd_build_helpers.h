@@ -17,18 +17,18 @@
 
 #include <stdio.h>
 
-static inline
-void foreach_target(struct build_state *state, int (*callback)(void *ctx, void *data)) {
+// iterate over all targets in the trie_map
+static void foreach_target(struct build_state *state, int (*callback)(void *ctx, void *data)) {
     cc_trie_iterate(&state->optsmap, state, callback);
 }
 
-static inline
-void foreach_main_file(struct build_state *state, int (*callback)(void *ctx, char *str)) {
+// iterate over the list of files with entry-points
+static void foreach_main_file(struct build_state *state, int (*callback)(void *ctx, char *str)) {
     str_list_iterate(&state->main_files, state, callback);
 }
 
-static
-int foreach_src_file(struct build_state *state, ccstr srcpaths, int (*callback)(void *ctx, const char *data)) {
+// iterate over all files found in the SRCPATHS directory paths list
+static int foreach_src_file(struct build_state *state, ccstr srcpaths, int (*callback)(void *ctx, const char *data)) {
     ccstrview sv = ccsv(&srcpaths);
     ccstrview path;
 
@@ -44,8 +44,8 @@ int foreach_src_file(struct build_state *state, ccstr srcpaths, int (*callback)(
     return 0;
 }
 
-static
-void foreach_include_directive(void *ctx, const char *srcpath, int (*callback)(void *ctx, const char *header)) {
+// iterate over all files found included in a source file
+static void foreach_include_directive(void *ctx, const char *srcpath, int (*callback)(void *ctx, const char *header)) {
     FILE *file = fopen(srcpath, "r");
     if (!file) {
         // failure here could simply mean the header is from outside
@@ -74,8 +74,8 @@ void foreach_include_directive(void *ctx, const char *srcpath, int (*callback)(v
     fclose(file);
 }
 
-static
-bool has_entry_point(const char *filename) {
+// detect if a source file has an entry point (main function)
+static bool has_entry_point(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         perror("Unable to open file");
