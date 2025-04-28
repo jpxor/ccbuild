@@ -6,7 +6,7 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
-#include "cmd_build.h"
+#include "cmd.h"
 #include "build_opts.h"
 
 #include "libcc/cc_threadpool.h"
