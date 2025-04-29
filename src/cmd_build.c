@@ -67,13 +67,16 @@ static int build_target_cb(void *ctx, void *data) {
     struct build_state *state = ctx;
     struct build_opts *opts = data;
 
-    bool skip = (state->cmdopts.targets != NULL)
-             && (ccstrstr(ccsv_raw(state->cmdopts.targets), ccsv(&opts->target)) == -1);
-
-    if (skip) {
-        return 0;
+    // a simple string search means a selected target can match  multiple targets if
+    // its shows up as a substring... this was not intentional but maybe a feature
+    // worth keeping?
+    if (state->cmdopts.targets != NULL) {
+        bool target_matches = (ccstrstr(ccsv(&opts->target), ccsv_raw(state->cmdopts.targets)) == 0);
+        if (!target_matches) {
+            return 0;
+        }
     }
-
+    
     // clean up/reset per target
     str_list_clear(&state->main_files);
     str_list_clear(&state->obj_files);
