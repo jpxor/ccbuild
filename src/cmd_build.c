@@ -59,6 +59,18 @@ static void resolve_link_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct build_o
     ccstr_replace(cmd, ccsv_raw("-L[LIBPATHS]"), ccsv(&opts->libpaths));
 }
 
+// callback, executed on each source file to initiate a compilation
+static int dispatch_compilation_cb(void *ctx, const char *srcpath) {
+    struct build_state *state = ctx;
+
+    // TODO: get memory from pool allocator (make per-target arena allocator)
+    struct compilation_task_ctx *taskctx = calloc(1, sizeof*taskctx);
+
+    taskctx->state = state;
+    ccstrcpy_raw(&taskctx->srcpath, srcpath);
+    return cc_threadpool_submit(&state->threadpool, taskctx, compile_translation_unit_cb);
+}
+
 // callback, executed on each build target to initiate a build
 static int build_target_cb(void *ctx, void *data) {
     struct build_state *state = ctx;

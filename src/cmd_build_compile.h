@@ -163,15 +163,4 @@ static void compile_translation_unit_cb(void*ctx) {
     compile_source(state, &src_info);
 }
 
-static int dispatch_compilation_cb(void *ctx, const char *srcpath) {
-    struct build_state *state = ctx;
-
-    // TODO: get memory from pool allocator (make per-target arena allocator)
-    struct compilation_task_ctx *taskctx = calloc(1, sizeof*taskctx);
-    taskctx->state = state;
-    ccstrcpy_raw(&taskctx->srcpath, srcpath);
-    cc_threadpool_submit(&state->threadpool, taskctx, compile_translation_unit_cb);
-    return 0;
-}
-
 #endif // CMD_BUILD_COMPILE_H
