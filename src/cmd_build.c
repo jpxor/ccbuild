@@ -78,7 +78,6 @@ static int build_target_cb(void *ctx, void *data) {
     state->target_opts = opts;
     str_list_clear(&state->main_files);
     str_list_clear(&state->obj_files);
-    cc_threadpool_init(&state->threadpool, state->cmdopts.jlevel);
 
     // ensures all paths have the correct prefixes
     tidy_pathlist(&opts->incpaths, ccsv_raw("-I"));
@@ -91,14 +90,8 @@ static int build_target_cb(void *ctx, void *data) {
     printf("\nINFO: building target '%s'\n", opts->target.cstr);
     
     // queues up all source files for compilation in threadpool
-    int err = foreach_src_file(state, opts->srcpaths, dispatch_compilation_cb);
-    if (err) return err;
-
-    // TODO: move threadpool to common state, no need to
-    // reinitialize each time,
-    // waits for all tasks to complete and then stops
-    // and deinitializes threadpool
-    cc_threadpool_stop_and_wait(&state->threadpool);
+    foreach_src_file(state, opts->srcpaths, dispatch_compilation_cb);
+    cc_threadpool_fenced_wait(&state->threadpool);
 
     // TODO: move linking to threadpool?
     if (opts->type & BIN) {
@@ -122,6 +115,10 @@ int cc_build(struct cmdopts *cmdopts) {
     if (err) return EXIT_FAILURE;
 
     state.optsmap = parse_build_opts(state.rootdir);
+
+    cc_threadpool_init(&state.threadpool, state.cmdopts.jlevel);
     foreach_target(&state, build_target_cb);
+
+    cc_threadpool_stop_and_wait(&state.threadpool);
     return EXIT_SUCCESS;
 }

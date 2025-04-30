@@ -38,9 +38,9 @@ struct build_state {
     struct cmdopts cmdopts;
     struct cc_trie optsmap;
     struct cc_trie src_files;
+    struct cc_threadpool threadpool;
 
     // target-specific state
-    struct cc_threadpool threadpool;
     struct build_opts *target_opts;
     struct str_list main_files;
     struct str_list obj_files;
