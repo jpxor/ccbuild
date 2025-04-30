@@ -29,6 +29,13 @@ struct cc_task {
     void* ctx;
 };
 
+struct fenced_ctx {
+    pthread_cond_t cond;
+    pthread_mutex_t mutex;
+    uint32_t idle_thread_count;
+    uint32_t id;
+};
+
 struct cc_threadpool {
     size_t nthreads;
     size_t head;
@@ -37,6 +44,7 @@ struct cc_threadpool {
     sem_t filled_slots;
     pthread_mutex_t nq_lock;
     pthread_mutex_t dq_lock;
+    struct fenced_ctx fence_ctx;
     struct cc_task tasks[CC_THREADPOOL_QUEUE_CAPACITY];
     pthread_t threads[CC_THREADPOOL_MAX_THREADS];
 };
@@ -46,6 +54,11 @@ int cc_threadpool_init(struct cc_threadpool* pool, size_t num_threads);
 
 // Submit a task to be executed by the thread pool
 int cc_threadpool_submit(struct cc_threadpool* pool, void* ctx, cc_task_func func);
+
+// inserts a fence into the task queue and waits for all tasks
+// before the fence to complete. Only supports a single fence
+// at a time (not thread-safe!)
+void cc_threadpool_fenced_wait(struct cc_threadpool* pool);
 
 // Wait for all tasks to complete and cleanup thread pool resources
 void cc_threadpool_stop_and_wait(struct cc_threadpool* pool);
@@ -111,6 +124,8 @@ int cc_threadpool_init(struct cc_threadpool* pool, size_t nthreads) {
 
     pthread_mutex_init(&pool->nq_lock, NULL);
     pthread_mutex_init(&pool->dq_lock, NULL);
+    pthread_mutex_init(&pool->fence_ctx.mutex, NULL);
+    pthread_cond_init(&pool->fence_ctx.cond, NULL);
 
     pool->head = 0;
     pool->tail = 0;
@@ -134,6 +149,54 @@ int cc_threadpool_submit(struct cc_threadpool* pool, void* ctx, cc_task_func fun
         .ctx = ctx,
     });
     return 0;
+}
+
+static void fenced_wait(void* arg) {
+    struct cc_threadpool* pool = arg;
+    struct fenced_ctx* ctx = &pool->fence_ctx;
+    // all threads must block except for the last one,
+    // which will signal all threads to continue
+    pthread_mutex_lock(&ctx->mutex);
+    size_t fence_id = ctx->id;
+    ctx->idle_thread_count++;
+    if (ctx->idle_thread_count == pool->nthreads) {
+        pthread_cond_broadcast(&ctx->cond);
+        ctx->id++;
+    } else {
+        while (fence_id == ctx->id) {
+            pthread_cond_wait(&ctx->cond, &ctx->mutex);
+        }
+    }
+    pthread_mutex_unlock(&ctx->mutex);
+}
+
+void cc_threadpool_fenced_wait(struct cc_threadpool* pool) {
+    assert(pool != NULL);
+
+    pthread_mutex_lock(&pool->fence_ctx.mutex);
+    pool->fence_ctx.idle_thread_count = 0;
+
+    // fence id is used in case a new fence is submitted
+    // before the previous threadpool threads have been signaled.
+    // they wont block on an old fence id
+    size_t fence_id = pool->fence_ctx.id;
+
+    // Submit fence tasks for each worker thread, each fence
+    // will block a thread from proceeding until all threads
+    // are blocked on the fence, then all threads are signaled
+    // to continue
+    for (size_t i = 0; i < pool->nthreads; i++) {
+        enqueue_task(pool, &(struct cc_task){
+            .func = fenced_wait,
+            .ctx = pool,
+        });
+    }
+
+    // wait for signal
+    while (fence_id == pool->fence_ctx.id) {
+        pthread_cond_wait(&pool->fence_ctx.cond, &pool->fence_ctx.mutex);
+    }
+    pthread_mutex_unlock(&pool->fence_ctx.mutex);
 }
 
 void cc_threadpool_stop_and_wait(struct cc_threadpool* pool) {
