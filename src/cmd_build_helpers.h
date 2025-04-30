@@ -115,4 +115,9 @@ static bool has_entry_point(const char *filename) {
     return false;
 }
 
+static int execute_command(ccstr command) {
+    printf("%s\n", command.cstr);
+    return system(command.cstr);
+}
+
 #endif // CMD_BUILD_HELPERS_H

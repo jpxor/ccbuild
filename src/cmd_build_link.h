@@ -60,8 +60,10 @@ int link_object_files_cb(void *ctx, char *main_obj) {
     ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
 
     printf("\nINFO: linking exec '%s'\n", binpath);
-    printf("%s\n", command.cstr);
-    return system(command.cstr);
+    int ret = execute_command(command);
+
+    ccstr_free(&command);
+    return ret;
 }
 
 static
@@ -114,8 +116,8 @@ int link_libs(struct build_state *state) {
         ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
 
         printf("\nINFO: linking shared '%s'\n", binpath);
-        printf("%s\n", command.cstr);
-        ret = system(command.cstr);
+        ret = execute_command(command);
+        ccstr_free(&command);
     }
 
     if (bopts->type & STATIC) {
@@ -124,8 +126,8 @@ int link_libs(struct build_state *state) {
         ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
 
         printf("\nINFO: linking static '%s'\n", binpath);
-        printf("%s\n", command.cstr);
-        ret = system(command.cstr);
+        ret = execute_command(command);
+        ccstr_free(&command);
     }
 
     return ret;

@@ -119,16 +119,15 @@ int compile_translation_unit_cb(void *ctx, void *data) {
         strncpy(tmpdirpath, objpath, dirname_size-1);
         tmpdirpath[dirname_size-1] = 0;
         ccfs_mkdirp(tmpdirpath);
-
     }
 
-    // needs free?
     ccstr command = ccstrdup(state->target_opts->compile);
     ccstr_replace(&command, CCSTRVIEW_STATIC("[OBJPATH]"), ccsv_raw(objpath));
     ccstr_replace(&command, CCSTRVIEW_STATIC("[SRCPATH]"), ccsv_raw(src->path));
+    int ret = execute_command(command);
 
-    printf("%s\n", command.cstr);
-    return system(command.cstr);
+    ccstr_free(&command);
+    return ret;
 }
 
 static
