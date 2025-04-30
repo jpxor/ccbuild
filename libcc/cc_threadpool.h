@@ -10,6 +10,7 @@
 #define _CC_THREADPOOL_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
