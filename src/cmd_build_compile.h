@@ -31,20 +31,6 @@ struct compilation_task_ctx {
     ccstr srcpath;
 };
 
-static void compile_translation_unit_cbv2(void*ctx);
-
-static
-int dispatch_compilation_cb(void *ctx, const char *srcpath) {
-    struct build_state *state = ctx;
-
-    // TODO: get memory from pool allocator (built into threadpool?)
-    struct compilation_task_ctx *taskctx = calloc(1, sizeof*taskctx);
-    taskctx->state = state;
-    ccstrcpy_raw(&taskctx->srcpath, srcpath);
-    cc_threadpool_submit(&state->threadpool, taskctx, compile_translation_unit_cbv2);
-    return 0;
-}
-
 static
 int update_lastmodified_cb(void *ctx, const char *header) {
     struct fid_ctx *fidctx = ctx;
@@ -70,10 +56,9 @@ int update_lastmodified_cb(void *ctx, const char *header) {
     return 0;
 }
 
-static
-int compile_translation_unit_cb(void *ctx, void *data) {
-    struct build_state *state = ctx;
-    struct srcinfo *src = data;
+static int compile_source(struct build_state *state, struct srcinfo *src) {
+    assert(state != NULL);
+    assert(src != NULL);
 
     if (!src->translation_unit) {
         return 0;
@@ -130,8 +115,7 @@ int compile_translation_unit_cb(void *ctx, void *data) {
     return ret;
 }
 
-static
-void compile_translation_unit_cbv2(void*ctx) {
+static void compile_translation_unit_cb(void*ctx) {
     struct compilation_task_ctx taskctx = *(struct compilation_task_ctx*)ctx;
     struct build_state *state = taskctx.state;
     const char *filepath = taskctx.srcpath.cstr;
@@ -164,7 +148,7 @@ void compile_translation_unit_cbv2(void*ctx) {
         strcpy(relpath, filepath);
     }
 
-    struct srcinfo info = {
+    struct srcinfo src_info = {
         .translation_unit = cext,
         .lastmodified = ccfs_last_modified_time(relpath),
         .main_file = has_entry_point(relpath),
@@ -174,11 +158,21 @@ void compile_translation_unit_cbv2(void*ctx) {
     // get lastmodified time from all included headers as well
     struct fid_ctx fidctx = {
         .state = state,
-        .lastmodified = &info.lastmodified,
+        .lastmodified = &src_info.lastmodified,
     };
     foreach_include_directive(&fidctx, relpath, update_lastmodified_cb);
+    compile_source(state, &src_info);
+}
 
-    compile_translation_unit_cb(state, &info);
+static int dispatch_compilation_cb(void *ctx, const char *srcpath) {
+    struct build_state *state = ctx;
+
+    // TODO: get memory from pool allocator (make per-target arena allocator)
+    struct compilation_task_ctx *taskctx = calloc(1, sizeof*taskctx);
+    taskctx->state = state;
+    ccstrcpy_raw(&taskctx->srcpath, srcpath);
+    cc_threadpool_submit(&state->threadpool, taskctx, compile_translation_unit_cb);
+    return 0;
 }
 
 #endif // CMD_BUILD_COMPILE_H
