@@ -80,7 +80,7 @@ int link_libs(struct build_state *state) {
     }
 
     if (strstr(bopts->libname.cstr, "lib") != bopts->libname.cstr) {
-        ccstr tmp = CCSTR_STATIC("lib");
+        ccstr tmp = CCSTR_LITERAL("lib");
         ccstr_append(&tmp, ccsv(&bopts->libname));
         ccstrcpy(&bopts->libname, tmp);
         ccstr_free(&tmp);

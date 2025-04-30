@@ -20,7 +20,7 @@
 // - max len: 2^32
 // - returns ccstr* to allow chaining
 
-#define CCSTR_FLAG_STATIC 1
+#define CCSTR_FLAG_LITERAL 1
 #define CCSTR_FLAG_TRUNCATED 2
 
 // ccstr owns the raw cstr memory
@@ -42,17 +42,17 @@ typedef struct {
     uint32_t flags;
 } ccstrview;
 
-#define CCSTR_STATIC(s) (ccstr){  \
+#define CCSTR_LITERAL(s) (ccstr){  \
     .cstr = s,                    \
     .len = sizeof(s)-1,           \
     .cap = 0        ,             \
-    .flags = CCSTR_FLAG_STATIC,   \
+    .flags = CCSTR_FLAG_LITERAL,   \
 }
 
 #define CCSTRVIEW_STATIC(s) (ccstrview){ \
     .cstr = s,                    \
     .len = sizeof(s)-1,           \
-    .flags = CCSTR_FLAG_STATIC,   \
+    .flags = CCSTR_FLAG_LITERAL,   \
 }
 
 static inline
@@ -116,7 +116,7 @@ ccstr * ccstr_append(ccstr *dest, ccstrview sv) {
 
 static inline
 void ccstr_free(ccstr *s) {
-    if (s->flags & CCSTR_FLAG_STATIC) {
+    if (s->flags & CCSTR_FLAG_LITERAL) {
         return;
     }
     free(s->cstr);
@@ -254,8 +254,8 @@ size_t ccstr_realloc(ccstr *s, size_t newcap) {
     }
     // static innitialzed ccstr needs to be
     // replaced with heap allocation
-    if (s->flags & CCSTR_FLAG_STATIC) {
-        s->flags = s->flags & ~CCSTR_FLAG_STATIC;
+    if (s->flags & CCSTR_FLAG_LITERAL) {
+        s->flags = s->flags & ~CCSTR_FLAG_LITERAL;
         char *newptr = malloc(newcap);
         if (newptr == NULL) {
             *s = (ccstr) {0};

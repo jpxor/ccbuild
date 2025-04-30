@@ -30,7 +30,7 @@ static ccstr* tidy_pathlist(ccstr *pathlist, ccstrview prefix) {
     // TODO: refactor strings to allow stack-based temporary strings
     ccstr newpathlist = ccstr_empty(pathlist->len + 2*(numPaths-numPrefix));
 
-    ccstr space_and_prefix = CCSTR_STATIC(" ");
+    ccstr space_and_prefix = CCSTR_LITERAL(" ");
     ccstr_append(&space_and_prefix, prefix);
 
     while (sv.len > 0) {

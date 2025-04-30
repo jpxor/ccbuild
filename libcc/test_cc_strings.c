@@ -23,17 +23,17 @@
 #include <string.h>
 
 int test_ccstrcpy_rawlen(void) {
-    ccstr s = CCSTR_STATIC("test string");
+    ccstr s = CCSTR_LITERAL("test string");
 
     // strcpy into static string shall allocate space
     // and convert to heap allocated backing
-    assert(s.flags & CCSTR_FLAG_STATIC);
+    assert(s.flags & CCSTR_FLAG_LITERAL);
     CHKEQ_PTR(ccstrcpy_raw(&s, "new string"), &s);
     CHKEQ_STR(s.cstr, "new string");
     CHKEQ_INT(s.len, 10);
     CHKEQ_INT(s.cap, 11);
     CHKEQ_INT(s.cstr[s.len], 0);
-    CHKEQ_INT(s.flags & CCSTR_FLAG_STATIC, 0);
+    CHKEQ_INT(s.flags & CCSTR_FLAG_LITERAL, 0);
     
     // strcpy long string into ccstr shall realloc space
     CHKEQ_PTR(ccstrcpy_raw(&s, "new longer string"), &s);
@@ -234,7 +234,7 @@ int test_ccstr_replace(void) {
 }
 
 int test_ccstr_append_join(void) {
-    ccstr s = CCSTR_STATIC("zero");
+    ccstr s = CCSTR_LITERAL("zero");
     ccstrview sep = ccsv_raw(" ");
     ccstrview svlist[] = {
         CCSTRVIEW_STATIC("one"),
