@@ -128,9 +128,8 @@ static void compile_translation_unit_cb(void*ctx) {
         return; // no extension, skip
     }
 
-    bool cext = strcmp(ext, ".c") == 0
-                || strcmp(ext, ".cpp") == 0
-                || strcmp(ext, ".cc") == 0;
+    bool cext = strcmp(ext, ".c") == 0 || strcmp(ext, ".C") == 0
+                || strcmp(ext, ".cpp") == 0 || strcmp(ext, ".cc") == 0;
 
     if (!cext) {
         return; // not source file, skip
