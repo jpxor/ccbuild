@@ -31,13 +31,13 @@ int link_object_files_cb(void *ctx, char *main_obj) {
     char *extpos = strchr(base_name_ptr, '.');
     ccstr name = ccstr_rawlen(base_name_ptr, extpos-base_name_ptr);
 
-    if (state->target_build_opts->installdir.len == 0) {
-        ccstr_append(&state->target_build_opts->installdir, CCSTRVIEW_STATIC("/"));
+    if (state->target_opts->installdir.len == 0) {
+        ccstr_append(&state->target_opts->installdir, CCSTRVIEW_STATIC("/"));
     }
 
     const char *path_segments[] = {
-        state->target_build_opts->install_root.cstr,
-        state->target_build_opts->installdir.cstr,
+        state->target_opts->install_root.cstr,
+        state->target_opts->installdir.cstr,
         name.cstr,
         NULL,
     };
@@ -55,7 +55,7 @@ int link_object_files_cb(void *ctx, char *main_obj) {
 
     ccstr_free(&name);
 
-    ccstr command = ccstrdup(state->target_build_opts->link);
+    ccstr command = ccstrdup(state->target_opts->link);
     ccstr_replace(&command, ccsv_raw("[OBJS]"), ccsv_raw(all_obj_files));
     ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
 
@@ -66,7 +66,7 @@ int link_object_files_cb(void *ctx, char *main_obj) {
 
 static
 int link_libs(struct build_state *state) {
-    struct build_opts *bopts = state->target_build_opts;
+    struct build_opts *bopts = state->target_opts;
 
     int reqsize = str_list_concat(&state->obj_files, ' ', NULL, 0);
 
@@ -109,7 +109,7 @@ int link_libs(struct build_state *state) {
     int ret = 0;
 
     if (bopts->type & SHARED) {
-        ccstr command = ccstrdup(state->target_build_opts->link_shared);
+        ccstr command = ccstrdup(state->target_opts->link_shared);
         ccstr_replace(&command, ccsv_raw("[OBJS]"), ccsv_raw(objfiles));
         ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
 
@@ -119,7 +119,7 @@ int link_libs(struct build_state *state) {
     }
 
     if (bopts->type & STATIC) {
-        ccstr command = ccstrdup(state->target_build_opts->link_static);
+        ccstr command = ccstrdup(state->target_opts->link_static);
         ccstr_replace(&command, ccsv_raw("[OBJS]"), ccsv_raw(objfiles));
         ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
 

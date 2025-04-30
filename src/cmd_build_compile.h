@@ -84,7 +84,7 @@ int compile_translation_unit_cb(void *ctx, void *data) {
     char objpath[PATH_MAX] = {0};
     size_t reqsize;
 
-    reqsize = cwk_path_join(state->target_build_opts->build_root.cstr, src->path, objpath, sizeof objpath);
+    reqsize = cwk_path_join(state->target_opts->build_root.cstr, src->path, objpath, sizeof objpath);
     if (reqsize >= sizeof objpath) {
         printf("%s: cwk_path_join failed\n", __func__);
         abort();
@@ -103,7 +103,7 @@ int compile_translation_unit_cb(void *ctx, void *data) {
     }
 
     time_t objlastmodified = ccfs_last_modified_time(objpath);
-    if (objlastmodified > src->lastmodified && objlastmodified > state->target_build_opts->lastmodified) {
+    if (objlastmodified > src->lastmodified && objlastmodified > state->target_opts->lastmodified) {
         // TOOD: look into using file hashes to identify changes?
         // not sure if this would be faster/slower than just a quick
         // rebuild...
@@ -123,7 +123,7 @@ int compile_translation_unit_cb(void *ctx, void *data) {
     }
 
     // needs free?
-    ccstr command = ccstrdup(state->target_build_opts->compile);
+    ccstr command = ccstrdup(state->target_opts->compile);
     ccstr_replace(&command, CCSTRVIEW_STATIC("[OBJPATH]"), ccsv_raw(objpath));
     ccstr_replace(&command, CCSTRVIEW_STATIC("[SRCPATH]"), ccsv_raw(src->path));
 

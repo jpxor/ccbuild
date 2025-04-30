@@ -16,20 +16,19 @@
 
 // Ensures each path in a space-separated path list has the specified prefix.
 // exmaple: include paths with -I prefix, lib paths with -L prefix
-static ccstr tidy_pathlist(ccstr inclist, ccstrview prefix) {
-    ccstrview sv = ccsv(&inclist);
+static ccstr* tidy_pathlist(ccstr *pathlist, ccstrview prefix) {
+    ccstrview sv = ccsv(pathlist);
     ccstrview path;
 
     int numPaths = 1 + ccsv_charcount(sv, ' ');
     int numPrefix = ccsv_strcount(sv, prefix);
 
-    // shortcut
     if ((sv.len == 0) || (numPrefix == numPaths)) {
-        return inclist;
+        return pathlist;
     }
 
-    // add include flag to each path if not present
-    ccstr newincpaths = ccstr_empty(inclist.len + 2*(numPaths-numPrefix));
+    // TODO: refactor strings to allow stack-based temporary strings
+    ccstr newpathlist = ccstr_empty(pathlist->len + 2*(numPaths-numPrefix));
 
     ccstr space_and_prefix = CCSTR_STATIC(" ");
     ccstr_append(&space_and_prefix, prefix);
@@ -37,26 +36,24 @@ static ccstr tidy_pathlist(ccstr inclist, ccstrview prefix) {
     while (sv.len > 0) {
         path = ccsv_tokenize(&sv, ' ');
         if (ccstrncmp(path, prefix, prefix.len) == 0) {
-            ccstr_append_join(&newincpaths, ccsv_raw(" "), &path, 1);
+            ccstr_append_join(&newpathlist, ccsv_raw(" "), &path, 1);
         } else {
-            ccstr_append_join(&newincpaths, ccsv(&space_and_prefix), &path, 1);
+            ccstr_append_join(&newpathlist, ccsv(&space_and_prefix), &path, 1);
         }
     }
-    free(inclist.cstr);
-    return newincpaths;
+    ccstrcpy(pathlist, newpathlist);
+    ccstr_free(&newpathlist);
+    return pathlist;
 }
 
-// fill in the per-target level predefined compile command template placeholders
+// fill in the per-target predefined template placeholders for the compile command
 static void resolve_compile_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct build_opts *opts) {
-    if (cmdopts->release) {
-        ccstr_replace(cmd, ccsv_raw("[DEBUG_OR_RELEASE]"), ccsv(&opts->release));
-    } else {
-        ccstr_replace(cmd, ccsv_raw("[DEBUG_OR_RELEASE]"), ccsv(&opts->debug));
-    }
+    ccstrview debug_or_release = (cmdopts->release)? ccsv(&opts->release) : ccsv(&opts->debug);
+    ccstr_replace(cmd, ccsv_raw("[DEBUG_OR_RELEASE]"), debug_or_release);
     ccstr_replace(cmd, ccsv_raw("-I[INCPATHS]"), ccsv(&opts->incpaths));
 }
 
-// fill in the per-target level predefined link command template placeholders
+// fill in the per-target predefined template placeholders for the link command
 static void resolve_link_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct build_opts *opts) {
     (void)cmdopts;
     ccstr_replace(cmd, ccsv_raw("-L[LIBPATHS]"), ccsv(&opts->libpaths));
@@ -68,7 +65,7 @@ static int build_target_cb(void *ctx, void *data) {
     struct build_opts *opts = data;
 
     // a simple string search means a selected target can match  multiple targets if
-    // its shows up as a substring... this was not intentional but maybe a feature
+    // it shows up as a substring... this was not intentional but maybe a feature
     // worth keeping?
     if (state->cmdopts.targets != NULL) {
         bool target_matches = (ccstrstr(ccsv(&opts->target), ccsv_raw(state->cmdopts.targets)) == 0);
@@ -77,32 +74,38 @@ static int build_target_cb(void *ctx, void *data) {
         }
     }
     
-    // clean up/reset per target
+    // setup per target variables
+    state->target_opts = opts;
     str_list_clear(&state->main_files);
     str_list_clear(&state->obj_files);
+    cc_threadpool_init(&state->threadpool, state->cmdopts.jlevel);
 
-    state->target_build_opts = opts;
-    printf("\nINFO: building target '%s'\n", opts->target.cstr);
+    // ensures all paths have the correct prefixes
+    tidy_pathlist(&opts->incpaths, ccsv_raw("-I"));
+    tidy_pathlist(&opts->libpaths, ccsv_raw("-L"));
 
-    // resolve path lists
-    opts->incpaths = tidy_pathlist(opts->incpaths, ccsv_raw("-I"));
-    opts->libpaths = tidy_pathlist(opts->libpaths, ccsv_raw("-L"));
-
-    // resolve commands
+    // resolve command template per-target placeholders
     resolve_compile_cmd(&opts->compile, &state->cmdopts, opts);
     resolve_link_cmd(&opts->link, &state->cmdopts, opts);
 
-    cc_threadpool_init(&state->threadpool, state->cmdopts.jlevel);
-
+    printf("\nINFO: building target '%s'\n", opts->target.cstr);
+    
+    // queues up all source files for compilation in threadpool
     int err = foreach_src_file(state, opts->srcpaths, dispatch_compilation_cb);
     if (err) return err;
 
+    // TODO: move threadpool to common state, no need to
+    // reinitialize each time,
+    // waits for all tasks to complete and then stops
+    // and deinitializes threadpool
     cc_threadpool_stop_and_wait(&state->threadpool);
 
+    // TODO: move linking to threadpool?
     if (opts->type & BIN) {
         foreach_main_file(state, link_object_files_cb);
     }
 
+    // automatically link libs if there are no main files
     if (opts->type & (SHARED|STATIC) || state->main_files.count == 0) {
         link_libs(state);
     }

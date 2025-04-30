@@ -32,15 +32,18 @@ int cc_clean(struct cmdopts *opts);
 int cc_build(struct cmdopts *opts);
 
 struct build_state {
-    struct cc_threadpool threadpool;
-    struct cmdopts cmdopts;
-    struct cc_trie optsmap;
-    struct build_opts *target_build_opts;
-    struct cc_trie src_files;
-    struct str_list main_files;
-    struct str_list obj_files;
+    // common state for all targets
     ccstr buildir;
     ccstr rootdir;
+    struct cmdopts cmdopts;
+    struct cc_trie optsmap;
+    struct cc_trie src_files;
+
+    // target-specific state
+    struct cc_threadpool threadpool;
+    struct build_opts *target_opts;
+    struct str_list main_files;
+    struct str_list obj_files;
 };
 
 static inline
