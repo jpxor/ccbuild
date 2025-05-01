@@ -27,11 +27,14 @@ static ccstr* tidy_pathlist(ccstr *pathlist, ccstrview prefix) {
         return pathlist;
     }
 
-    // TODO: refactor strings to allow stack-based temporary strings
-    ccstr newpathlist = ccstr_empty(pathlist->len + 2*(numPaths-numPrefix));
+    char tmp0_store[prefix.len + 2 /*space & null*/];
+    ccstr space_and_prefix = CCSTR_STACK(tmp0_store, sizeof tmp0_store);
 
-    ccstr space_and_prefix = CCSTR_LITERAL(" ");
+    ccstr_append(&space_and_prefix, ccsv_raw(" "));
     ccstr_append(&space_and_prefix, prefix);
+
+    char tmp1_store[pathlist->len + 3*(numPaths-numPrefix) + 1];
+    ccstr newpathlist = CCSTR_STACK(tmp1_store, sizeof tmp1_store);
 
     while (sv.len > 0) {
         path = ccsv_tokenize(&sv, ' ');
@@ -42,7 +45,6 @@ static ccstr* tidy_pathlist(ccstr *pathlist, ccstrview prefix) {
         }
     }
     ccstrcpy(pathlist, newpathlist);
-    ccstr_free(&newpathlist);
     return pathlist;
 }
 
