@@ -10,6 +10,7 @@
 #define _CC_THREADPOOL_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -47,6 +48,10 @@ int cc_threadpool_init(struct cc_threadpool* pool, size_t num_threads);
 // Submit a task to be executed by the thread pool
 int cc_threadpool_submit(struct cc_threadpool* pool, void* ctx, cc_task_func func);
 
+// inserts a fence into the task queue and waits for all tasks
+// before the fence to complete
+void cc_threadpool_fenced_wait(struct cc_threadpool* pool);
+
 // Wait for all tasks to complete and cleanup thread pool resources
 void cc_threadpool_stop_and_wait(struct cc_threadpool* pool);
 
@@ -56,6 +61,7 @@ void cc_threadpool_stop_and_wait(struct cc_threadpool* pool);
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 
 static void enqueue_task(struct cc_threadpool* queue, struct cc_task *t) {
@@ -67,6 +73,26 @@ static void enqueue_task(struct cc_threadpool* queue, struct cc_task *t) {
     pthread_mutex_unlock(&queue->nq_lock);
 
     sem_post(&queue->filled_slots);
+}
+
+static void enqueue_fence_tasks(struct cc_threadpool* queue, struct cc_task *t) {
+    // all fence tasks must be grouped together, no other tasks interleaved
+    // so claim enough space for all fence tasks
+    for (size_t i = 0; i < queue->nthreads; i++) {
+        sem_wait(&queue->empty_slots);
+    }
+    // then add all with same lock
+    pthread_mutex_lock(&queue->nq_lock);
+
+    for (size_t i = 0; i < queue->nthreads; i++) {
+        queue->tasks[queue->tail] = *t;
+        queue->tail = (queue->tail + 1) % CC_THREADPOOL_QUEUE_CAPACITY;
+    }
+    pthread_mutex_unlock(&queue->nq_lock);
+
+    for (size_t i = 0; i < queue->nthreads; i++) {
+        sem_post(&queue->filled_slots);
+    }
 }
 
 static struct cc_task dequeue_task(struct cc_threadpool* queue) {
@@ -134,6 +160,66 @@ int cc_threadpool_submit(struct cc_threadpool* pool, void* ctx, cc_task_func fun
         .ctx = ctx,
     });
     return 0;
+}
+
+struct fence_ctx {
+    pthread_cond_t cond;
+    pthread_mutex_t mutex;
+    size_t active_threads;
+    sem_t fences_cleared;
+};
+
+static void fenced_wait(void* arg) {
+    struct fence_ctx* ctx = arg;
+    // all threads must block except for the last one,
+    // which will signal all pool threads to continue
+    pthread_mutex_lock(&ctx->mutex);
+    ctx->active_threads--;
+
+    if (ctx->active_threads == 0) {
+        pthread_cond_broadcast(&ctx->cond);
+
+    } else {
+        while (ctx->active_threads > 0) {
+            pthread_cond_wait(&ctx->cond, &ctx->mutex);
+        }
+    }
+    pthread_mutex_unlock(&ctx->mutex);
+
+    // must be done with ctx after clearing fence,
+    // the main thread will destroy and free it
+    sem_post(&ctx->fences_cleared);
+}
+
+void cc_threadpool_fenced_wait(struct cc_threadpool* pool) {
+    assert(pool != NULL);
+
+    // each fence added needs its own context
+    struct fence_ctx *ctx = calloc(1, sizeof(*ctx));
+
+    pthread_mutex_init(&ctx->mutex, NULL);
+    pthread_cond_init(&ctx->cond, NULL);
+
+    sem_init(&ctx->fences_cleared, 0, 0);
+    ctx->active_threads = pool->nthreads;
+
+    // Submit a fence task for each pool thread, each fence task
+    // will block a thread from proceeding until all threads
+    // are blocked, then all threads are signaled to continue
+    enqueue_fence_tasks(pool, &(struct cc_task){
+        .func = fenced_wait,
+        .ctx = ctx,
+    });
+
+    // wait for all fences to clear
+    for (size_t i = 0; i < pool->nthreads; ++i) {
+        sem_wait(&ctx->fences_cleared);
+    }
+
+    pthread_mutex_destroy(&ctx->mutex);
+    sem_destroy(&ctx->fences_cleared);
+    pthread_cond_destroy(&ctx->cond);
+    free(ctx);
 }
 
 void cc_threadpool_stop_and_wait(struct cc_threadpool* pool) {

@@ -6,8 +6,7 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
-#include "cmd_clean.h"
-#include "cmd_build.h"
+#include "cmd.h"
 #include "libcc/cc_files.h"
 
 int cc_clean(struct cmdopts *cmdopts) {

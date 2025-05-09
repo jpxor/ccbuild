@@ -11,8 +11,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 
-#include "cmd_build.h"
-#include "cmd_clean.h"
+#include "cmd.h"
 
 // Function to print usage instructions
 void print_usage(const char *program_name) {

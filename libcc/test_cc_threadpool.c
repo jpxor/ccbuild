@@ -54,11 +54,51 @@ int test_submit(void) {
     return 0;
 }
 
+int test_fence(void) {
+    struct cc_threadpool pool;
+    cc_threadpool_init(&pool, 4);
+
+    // empty queue
+    cc_threadpool_fenced_wait(&pool);
+
+    // submit 6 tasks (more than nthreads)
+    _Atomic int val = 0;
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    cc_threadpool_fenced_wait(&pool);
+    CHKEQ_INT(val, 6);
+
+    // submit 1 more (less than nthreads)
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    cc_threadpool_fenced_wait(&pool);
+    CHKEQ_INT(val, 7);
+
+    // submit 4 more (same as nthreads)
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    CHKEQ_INT(cc_threadpool_submit(&pool, &val, test_task_inc), 0);
+    cc_threadpool_fenced_wait(&pool);
+    CHKEQ_INT(val, 11);
+
+    // empty + called multiple times in a row
+    cc_threadpool_fenced_wait(&pool);
+    cc_threadpool_fenced_wait(&pool);
+
+    cc_threadpool_stop_and_wait(&pool);
+    return 0;
+}
+
 int main(void) {
     int err = 0;
     
     err |= test_init();
     err |= test_submit();
+    err |= test_fence();
 
     printf("[%s] test cc_threadpool\n", err? "FAILED": "PASSED");
     return 0;

@@ -20,8 +20,10 @@
 // - max len: 2^32
 // - returns ccstr* to allow chaining
 
-#define CCSTR_FLAG_STATIC 1
-#define CCSTR_FLAG_TRUNCATED 2
+#define CCSTR_FLAG_HEAP    1
+#define CCSTR_FLAG_LITERAL 2
+#define CCSTR_FLAG_STACK   4
+#define CCSTR_FLAG_TRUNCATED 8
 
 // ccstr owns the raw cstr memory
 // except when static flag is set,
@@ -42,17 +44,24 @@ typedef struct {
     uint32_t flags;
 } ccstrview;
 
-#define CCSTR_STATIC(s) (ccstr){  \
+#define CCSTR_LITERAL(s) (ccstr){  \
     .cstr = s,                    \
     .len = sizeof(s)-1,           \
     .cap = 0        ,             \
-    .flags = CCSTR_FLAG_STATIC,   \
+    .flags = CCSTR_FLAG_LITERAL,   \
+}
+
+#define CCSTR_STACK(array, size) (ccstr){  \
+    .cstr = array,               \
+    .len = 0,                    \
+    .cap = size,                 \
+    .flags = CCSTR_FLAG_STACK,   \
 }
 
 #define CCSTRVIEW_STATIC(s) (ccstrview){ \
     .cstr = s,                    \
     .len = sizeof(s)-1,           \
-    .flags = CCSTR_FLAG_STATIC,   \
+    .flags = CCSTR_FLAG_LITERAL,   \
 }
 
 static inline
@@ -68,7 +77,12 @@ ccstrview ccsv_raw(const char *raw) {
     return (ccstrview) {
         .cstr = (char*)raw,
         .len = strlen(raw),
+        .flags = CCSTR_FLAG_LITERAL,
     };
+}
+
+static inline int ccstr_is_truncated(ccstr *s) {
+    return s->flags & CCSTR_FLAG_TRUNCATED;
 }
 
 // constructors
@@ -116,7 +130,7 @@ ccstr * ccstr_append(ccstr *dest, ccstrview sv) {
 
 static inline
 void ccstr_free(ccstr *s) {
-    if (s->flags & CCSTR_FLAG_STATIC) {
+    if (s->flags & CCSTR_FLAG_LITERAL) {
         return;
     }
     free(s->cstr);
@@ -251,11 +265,17 @@ int ccstrncmp(ccstrview str0, ccstrview str1, size_t n) {
 size_t ccstr_realloc(ccstr *s, size_t newcap) {
     if (newcap <= s->len) {
         s->len = newcap - 1;
+
+    } else if (s->flags & CCSTR_FLAG_STACK) {
+        // can't realloc stack allocated ccstr
+        s->flags = CCSTR_FLAG_TRUNCATED;
+        return s->cap;
     }
-    // static innitialzed ccstr needs to be
+    // literal innitialzed ccstr needs to be
     // replaced with heap allocation
-    if (s->flags & CCSTR_FLAG_STATIC) {
-        s->flags = s->flags & ~CCSTR_FLAG_STATIC;
+    if (s->flags & CCSTR_FLAG_LITERAL) {
+        s->flags = s->flags & ~CCSTR_FLAG_LITERAL;
+        s->flags |= CCSTR_FLAG_HEAP;
         char *newptr = malloc(newcap);
         if (newptr == NULL) {
             *s = (ccstr) {0};

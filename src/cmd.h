@@ -6,15 +6,16 @@
  * Copyright (c) 2025 Josh Simonot
  */
 
-#ifndef BUILD_H
-#define BUILD_H
+#ifndef CMD_COMMON_H
+#define CMD_COMMON_H
 
-#include "libcc/cc_threadpool.h"
-#include "libcc/cc_trie_map.h"
-#include "libcc/cc_files.h"
 #include "vendor/cwalk/cwalk.h"
+#include "libcc/cc_files.h"
+#include "libcc/cc_strings.h"
+#include "libcc/cc_trie_map.h"
+#include "libcc/cc_threadpool.h"
+
 #include "str_list.h"
-#include "build_opts.h"
 
 #include <limits.h>
 #include <stdio.h>
@@ -27,21 +28,25 @@ struct cmdopts {
     bool release;
 };
 
-struct build_state {
-    struct cc_threadpool threadpool;
-    struct cmdopts cmdopts;
-    struct cc_trie optsmap;
-    struct build_opts *target_build_opts;
-    struct cc_trie src_files;
-    struct str_list main_files;
-    struct str_list obj_files;
-    ccstr buildir;
-    ccstr rootdir;
-};
-
+int cc_clean(struct cmdopts *opts);
 int cc_build(struct cmdopts *opts);
 
-static
+struct build_state {
+    // common state for all targets
+    ccstr buildir;
+    ccstr rootdir;
+    struct cmdopts cmdopts;
+    struct cc_trie optsmap;
+    struct cc_trie src_files;
+    struct cc_threadpool threadpool;
+
+    // target-specific state
+    struct build_opts *target_opts;
+    struct str_list main_files;
+    struct str_list obj_files;
+};
+
+static inline
 int set_root_and_build_paths(struct build_state *state) {
     char cwd[PATH_MAX];
     ccfs_cwd(cwd, sizeof cwd);
@@ -72,4 +77,4 @@ int set_root_and_build_paths(struct build_state *state) {
     return 0;
 }
 
-#endif // BUILD_H
+#endif // CMD_COMMON_H
