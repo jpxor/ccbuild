@@ -29,16 +29,16 @@ int link_object_files_cb(void *ctx, char *main_obj) {
     cwk_path_get_basename(main_obj, &base_name_ptr, &base_name_len);
 
     char *extpos = strchr(base_name_ptr, '.');
-    ccstr name = ccstr_rawlen(base_name_ptr, extpos-base_name_ptr);
+    ccstr name = CCSTR_VIEW(base_name_ptr, extpos-base_name_ptr);
 
     if (state->target_opts->installdir.len == 0) {
-        ccstr_append(&state->target_opts->installdir, CCSTRVIEW_STATIC("/"));
+        ccstr_append(&state->target_opts->installdir, CCSTR_LITERAL("/"));
     }
 
     const char *path_segments[] = {
-        state->target_opts->install_root.cstr,
-        state->target_opts->installdir.cstr,
-        name.cstr,
+        state->target_opts->install_root.cptr,
+        state->target_opts->installdir.cptr,
+        name.cptr,
         NULL,
     };
 
@@ -53,17 +53,20 @@ int link_object_files_cb(void *ctx, char *main_obj) {
     tmpdirpath[dirname_len-1] = 0;
     ccfs_mkdirp(tmpdirpath);
 
-    ccstr_free(&name);
+    ccstr ccstr_all_obj_files = CCSTR_VIEW(all_obj_files, strlen(all_obj_files));
+    ccstr ccstr_binpath = CCSTR_VIEW(binpath, strlen(binpath));
 
-    ccstr command = ccstrdup(state->target_opts->link);
-    ccstr_replace(&command, ccsv_raw("[OBJS]"), ccsv_raw(all_obj_files));
-    ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
+    int reqlen = state->target_opts->link.len + ccstr_all_obj_files.len + ccstr_binpath.len;
+    char command_buf[reqlen+1];
+
+    ccstr command = CCSTR(command_buf, 0, sizeof(command_buf));
+    ccstrcpy(&command, state->target_opts->link);
+
+    ccstr_replace(&command, CCSTR_LITERAL("[OBJS]"), ccstr_all_obj_files);
+    ccstr_replace(&command, CCSTR_LITERAL("[BINPATH]"), ccstr_binpath);
 
     printf("\nINFO: linking exec '%s'\n", binpath);
-    int ret = execute_command(command);
-
-    ccstr_free(&command);
-    return ret;
+    return execute_command(command);
 }
 
 static
@@ -76,24 +79,23 @@ int link_libs(struct build_state *state) {
     str_list_concat(&state->obj_files, ' ', objfiles, reqsize);
 
     if (bopts->libname.len == 0) {
-        ccstr_append(&bopts->libname, ccsv(&bopts->target));
+        ccstr_append(&bopts->libname, bopts->target);
     }
 
-    if (strstr(bopts->libname.cstr, "lib") != bopts->libname.cstr) {
+    if (strstr(bopts->libname.cptr, "lib") != bopts->libname.cptr) {
         ccstr tmp = CCSTR_LITERAL("lib");
-        ccstr_append(&tmp, ccsv(&bopts->libname));
+        ccstr_append(&tmp, bopts->libname);
         ccstrcpy(&bopts->libname, tmp);
-        ccstr_free(&tmp);
     }
 
     if (bopts->installdir.len == 0) {
-        ccstr_append(&bopts->installdir, CCSTRVIEW_STATIC("/"));
+        ccstr_append(&bopts->installdir, CCSTR_LITERAL("/"));
     }
 
     const char *path_segments[] = {
-        bopts->install_root.cstr,
-        bopts->installdir.cstr,
-        bopts->libname.cstr,
+        bopts->install_root.cptr,
+        bopts->installdir.cptr,
+        bopts->libname.cptr,
         NULL,
     };
 
@@ -110,24 +112,38 @@ int link_libs(struct build_state *state) {
 
     int ret = 0;
 
+    ccstr ccstr_objfiles = CCSTR_VIEW(objfiles, strlen(objfiles));
+    ccstr ccstr_binpath = CCSTR_VIEW(binpath, strlen(binpath));
+
+    int reqlen = state->target_opts->link_shared.len;
+    if (reqlen < state->target_opts->link_static.len) {
+        reqlen = state->target_opts->link_static.len;
+    }
+    reqlen += ccstr_objfiles.len + ccstr_binpath.len;
+    char command_buf[reqlen+1];
+
     if (bopts->type & SHARED) {
-        ccstr command = ccstrdup(state->target_opts->link_shared);
-        ccstr_replace(&command, ccsv_raw("[OBJS]"), ccsv_raw(objfiles));
-        ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
+        
+        ccstr command = CCSTR(command_buf, 0, sizeof(command_buf));
+        ccstrcpy(&command, state->target_opts->link_shared);
+
+        ccstr_replace(&command, CCSTR_LITERAL("[OBJS]"), ccstr_objfiles);
+        ccstr_replace(&command, CCSTR_LITERAL("[BINPATH]"), ccstr_binpath);
 
         printf("\nINFO: linking shared '%s'\n", binpath);
         ret = execute_command(command);
-        ccstr_free(&command);
     }
 
     if (bopts->type & STATIC) {
-        ccstr command = ccstrdup(state->target_opts->link_static);
-        ccstr_replace(&command, ccsv_raw("[OBJS]"), ccsv_raw(objfiles));
-        ccstr_replace(&command, ccsv_raw("[BINPATH]"), ccsv_raw(binpath));
+
+        ccstr command = CCSTR(command_buf, 0, sizeof(command_buf));
+        ccstrcpy(&command, state->target_opts->link_static);
+
+        ccstr_replace(&command, CCSTR_LITERAL("[OBJS]"), CCSTR_LITERAL(objfiles));
+        ccstr_replace(&command, CCSTR_LITERAL("[BINPATH]"), CCSTR_LITERAL(binpath));
 
         printf("\nINFO: linking static '%s'\n", binpath);
         ret = execute_command(command);
-        ccstr_free(&command);
     }
 
     return ret;

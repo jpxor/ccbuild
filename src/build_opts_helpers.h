@@ -22,13 +22,21 @@ static void foreach_target(struct cc_trie *targets, int (*callback)(void *ctx, v
 
 // attempt to run a compiler to determine if its
 // available
-static int is_compiler_available(const char *compiler) {
+static int is_compiler_available(const ccstr compiler) {
     char command[128];
+    char compiler_cstr[128];
+
+    int len = ccstr_tostr(compiler_cstr, sizeof(compiler_cstr), compiler);
+    if (len >= sizeof(compiler_cstr)) {
+        printf("compiler name truncated: '%s'\n", compiler_cstr);
+        abort();
+    }
+    assert(compiler_cstr[len] == 0);
 
     #if defined(_WIN32) || defined(_WIN64)
-    snprintf(command, sizeof(command), "%s --version >nul 2>nul", compiler);
+    snprintf(command, sizeof(command), "%s --version", compiler_cstr);
     #elif defined(_POSIX_VERSION) || defined(__linux__) || defined(__unix__)
-    snprintf(command, sizeof(command), "%s --version > /dev/null 2>&1", compiler);
+    snprintf(command, sizeof(command), "%s --version > /dev/null 2>&1", compiler_cstr);
     #else
     #error Platform not supported.
     #endif
@@ -38,28 +46,18 @@ static int is_compiler_available(const char *compiler) {
 
 // given a pipe (|) separated list of compiler names,
 // test each one until a working compiler is found
-static char* find_compiler(const char *compiler_list) {
+static ccstr find_compiler(const ccstr compiler_list) {
     static char compiler[128];
-    char temp[256];
 
-    strncpy(temp, compiler_list, sizeof(temp) - 1);
-    temp[sizeof(temp) - 1] = 0;
+    ccstr listview = ccstr_view(compiler_list);
+    ccstr token;
 
-    char *token = strtok(temp, "|");
-    while (token != NULL) {
+    while (token = ccstr_tokenize(&listview, '|'), token.len > 0) {
+        ccstr_strip_whitespace(&token);
+
         if (is_compiler_available(token)) {
-            // skip leading whitespace
-            while (*token && (*token == ' ' || *token == '\t')) token++;
-
-            // find length to trim trailing whitespace
-            size_t len = strlen(token);
-            while (len > 0 && (token[len-1] == ' ' || token[len-1] == '\t')) len--;
-
-            strncpy(compiler, token, len);
-            compiler[len] = 0;
-            return compiler;
+            return token;
         }
-        token = strtok(NULL, "|");
     }
     printf("error: no compiler found on 'path'. Check that a compiler is installed and available.\n");
     printf("       If a compiler is installed, ensure its on the path or specify an absolute path\n");
@@ -69,41 +67,41 @@ static char* find_compiler(const char *compiler_list) {
 
 // Detects a variable in the format $(VARNAME) and returns a copy of it
 // Returns a zero-length ccstr if no variable is found
-static ccstr find_variable(ccstrview sv) {
-    if (!sv.cstr || sv.len == 0) {
-        return ccstr_empty(0);
+static ccstr find_variable(ccstr sv) {
+    if (!sv.cptr || sv.len == 0) {
+        return CCSTR_EMPTY();
     }
-    int start = ccstrstr(sv, CCSTRVIEW_STATIC("$("));
+    int start = ccstrstr(sv, CCSTR_LITERAL("$("));
     if (start == -1) {
-        return ccstr_empty(0);
+        return CCSTR_EMPTY();
     }
-    int end = ccstrstr(ccsv_offset(sv, start), CCSTRVIEW_STATIC(")"));
+    int end = ccstrstr(ccstr_offset(sv, start), CCSTR_LITERAL(")"));
     if (end == -1) {
-        return ccstr_empty(0);
+        return CCSTR_EMPTY();
     }
-    return ccstr_rawlen(sv.cstr + start, end + 1);
+    return CCSTR_VIEW(sv.cptr + start, end + 1);
 }
 
 // the build order of targets can be specified by adding
 // a numeric prefix and optional '.' separator to the target
 // name, which must be stripped before variable substitution
-static ccstrview strip_numeric_prefix(ccstr *str) {
+static ccstr strip_numeric_prefix(ccstr *str) {
     assert(str != NULL);
-    if (str == NULL || str->len == 0 || !str->cstr) {
-        return (ccstrview){0};
+    if (str == NULL || str->len == 0 || !str->cptr) {
+        return (ccstr){0};
     }
     char *endptr;
-    strtoul(str->cstr, &endptr, 10);
+    strtoul(str->cptr, &endptr, 10);
     if (*endptr == '.') ++endptr;
-    return ccsv_offset(ccsv(str), (endptr - str->cstr));
+    return ccstr_offset(*str, (endptr - str->cptr));
 }
 
 // given a variable name which should match one of the config options, return its value
-static ccstrview get_var_value(const struct option_def* optdefs, struct build_opts *opts, ccstrview varname) {
-    if (varname.len == 0 || !varname.cstr) {
-        return (ccstrview){0};
+static ccstr get_var_value(const struct option_def* optdefs, struct build_opts *opts, ccstr varname) {
+    if (varname.len == 0 || !varname.cptr) {
+        return (ccstr){0};
     }
-    #define NAME_MATCH(varname, name) (ccstrcasecmp(varname, ccsv_raw(name)) == 0)
+    #define NAME_MATCH(varname, name) (ccstrcasecmp(varname, CCSTR_LITERAL(name)) == 0)
 
     // special case for TARGET: it might have a numeric prefix
     // that needs to be stripped
@@ -113,11 +111,12 @@ static ccstrview get_var_value(const struct option_def* optdefs, struct build_op
     // general case, look for a match in the option definitions
     for (size_t i = 0; optdefs[i].name != NULL; ++i) {
         if (NAME_MATCH(varname, optdefs[i].name)) {
-            return ccsv(OPT_VIA_OFFSET(opts, optdefs[i].field_offset));
+            // TODO: fix this ugly thing:
+            return *(ccstr*)OPT_VIA_OFFSET(opts, optdefs[i].field_offset);
         }
     }
     /// no matches
-    return (ccstrview){0};
+    return (ccstr){0};
 }
 
  #endif // _BUILD_OPT_HELPERS_H_

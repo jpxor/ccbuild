@@ -16,6 +16,6 @@ int cc_clean(struct cmdopts *cmdopts) {
     int err = set_root_and_build_paths(&state);
     if (err) return EXIT_FAILURE;
 
-    ccfs_rmdir_recursive(state.buildir.cstr);
+    ccfs_rmdir_recursive(state.buildir.cptr);
     return EXIT_SUCCESS;
 }

@@ -16,9 +16,9 @@
 
 // Ensures each path in a space-separated path list has the specified prefix.
 // exmaple: include paths with -I prefix, lib paths with -L prefix
-static ccstr* tidy_pathlist(ccstr *pathlist, ccstrview prefix) {
-    ccstrview sv = ccsv(pathlist);
-    ccstrview path;
+static ccstr* tidy_pathlist(ccstr *pathlist, ccstr prefix) {
+    ccstr sv = *pathlist;
+    ccstr path;
 
     int numPaths = 1 + ccsv_charcount(sv, ' ');
     int numPrefix = ccsv_strcount(sv, prefix);
@@ -28,20 +28,20 @@ static ccstr* tidy_pathlist(ccstr *pathlist, ccstrview prefix) {
     }
 
     char tmp0_store[prefix.len + 2 /*space & null*/];
-    ccstr space_and_prefix = CCSTR_STACK(tmp0_store, sizeof tmp0_store);
+    ccstr space_and_prefix = CCSTR(tmp0_store, 0, sizeof tmp0_store);
 
-    ccstr_append(&space_and_prefix, ccsv_raw(" "));
+    ccstr_append(&space_and_prefix, CCSTR_LITERAL(" "));
     ccstr_append(&space_and_prefix, prefix);
 
     char tmp1_store[pathlist->len + 3*(numPaths-numPrefix) + 1];
-    ccstr newpathlist = CCSTR_STACK(tmp1_store, sizeof tmp1_store);
+    ccstr newpathlist = CCSTR(tmp1_store, 0, sizeof tmp1_store);
 
     while (sv.len > 0) {
-        path = ccsv_tokenize(&sv, ' ');
+        path = ccstr_tokenize(&sv, ' ');
         if (ccstrncmp(path, prefix, prefix.len) == 0) {
-            ccstr_append_join(&newpathlist, ccsv_raw(" "), &path, 1);
+            ccstr_append_join(&newpathlist, CCSTR_LITERAL(" "), &path, 1);
         } else {
-            ccstr_append_join(&newpathlist, ccsv(&space_and_prefix), &path, 1);
+            ccstr_append_join(&newpathlist, space_and_prefix, &path, 1);
         }
     }
     ccstrcpy(pathlist, newpathlist);
@@ -50,15 +50,15 @@ static ccstr* tidy_pathlist(ccstr *pathlist, ccstrview prefix) {
 
 // fill in the per-target predefined template placeholders for the compile command
 static void resolve_compile_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct build_opts *opts) {
-    ccstrview debug_or_release = (cmdopts->release)? ccsv(&opts->release) : ccsv(&opts->debug);
-    ccstr_replace(cmd, ccsv_raw("[DEBUG_OR_RELEASE]"), debug_or_release);
-    ccstr_replace(cmd, ccsv_raw("-I[INCPATHS]"), ccsv(&opts->incpaths));
+    ccstr debug_or_release = (cmdopts->release)? opts->release : opts->debug;
+    ccstr_replace(cmd, CCSTR_LITERAL("[DEBUG_OR_RELEASE]"), debug_or_release);
+    ccstr_replace(cmd, CCSTR_LITERAL("-I[INCPATHS]"), opts->incpaths);
 }
 
 // fill in the per-target predefined template placeholders for the link command
 static void resolve_link_cmd(ccstr *cmd, struct cmdopts *cmdopts, struct build_opts *opts) {
     (void)cmdopts;
-    ccstr_replace(cmd, ccsv_raw("-L[LIBPATHS]"), ccsv(&opts->libpaths));
+    ccstr_replace(cmd, CCSTR_LITERAL("-L[LIBPATHS]"), opts->libpaths);
 }
 
 // callback, executed on each source file to initiate a compilation
@@ -69,7 +69,7 @@ static int dispatch_compilation_cb(void *ctx, const char *srcpath) {
     struct compilation_task_ctx *taskctx = calloc(1, sizeof*taskctx);
 
     taskctx->state = state;
-    ccstrcpy_raw(&taskctx->srcpath, srcpath);
+    ccstrcpy(&taskctx->srcpath, CCSTR_VIEW(srcpath, strlen(srcpath)));
     return cc_threadpool_submit(&state->threadpool, taskctx, compile_translation_unit_cb);
 }
 
@@ -82,7 +82,7 @@ static int build_target_cb(void *ctx, void *data) {
     // it shows up as a substring... this was not intentional but maybe a feature
     // worth keeping?
     if (state->cmdopts.targets != NULL) {
-        bool target_matches = (ccstrstr(ccsv(&opts->target), ccsv_raw(state->cmdopts.targets)) == 0);
+        bool target_matches = (ccstrstr(opts->target, CCSTR_LITERAL(state->cmdopts.targets)) == 0);
         if (!target_matches) {
             return 0;
         }
@@ -94,14 +94,14 @@ static int build_target_cb(void *ctx, void *data) {
     str_list_clear(&state->obj_files);
 
     // ensures all paths have the correct prefixes
-    tidy_pathlist(&opts->incpaths, ccsv_raw("-I"));
-    tidy_pathlist(&opts->libpaths, ccsv_raw("-L"));
+    tidy_pathlist(&opts->incpaths, CCSTR_LITERAL("-I"));
+    tidy_pathlist(&opts->libpaths, CCSTR_LITERAL("-L"));
 
     // resolve command template per-target placeholders
     resolve_compile_cmd(&opts->compile, &state->cmdopts, opts);
     resolve_link_cmd(&opts->link, &state->cmdopts, opts);
 
-    printf("\nINFO: building target '%s'\n", opts->target.cstr);
+    printf("\nINFO: building target '%s'\n", opts->target.cptr);
     
     // queues up all source files for compilation in threadpool
     foreach_src_file(state, opts->srcpaths, dispatch_compilation_cb);

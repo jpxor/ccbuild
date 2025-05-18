@@ -32,31 +32,31 @@ struct option_def{
     int flags;
 };
 
- static void general_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
+ static void ccstr_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
  static void so_version_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
  static void type_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value);
 
  #define BOPT_OFFSET(name) offsetof(struct build_opts, name)
 
 static const struct option_def build_option_defs[] = {
-    {"BUILD_ROOT",   general_opt_handler,    BOPT_OFFSET(build_root),   OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"INSTALL_ROOT", general_opt_handler,    BOPT_OFFSET(install_root), OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"CC",           general_opt_handler,    BOPT_OFFSET(cc),           OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"LIBNAME",      general_opt_handler,    BOPT_OFFSET(libname),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"COMPILE",      general_opt_handler,    BOPT_OFFSET(compile),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"LINK",         general_opt_handler,    BOPT_OFFSET(link),         OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"LINK_SHARED",  general_opt_handler,    BOPT_OFFSET(link_shared),  OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"LINK_STATIC",  general_opt_handler,    BOPT_OFFSET(link_static),  OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"INSTALLDIR",   general_opt_handler,    BOPT_OFFSET(installdir),   OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
-    {"SRCPATHS",     general_opt_handler,    BOPT_OFFSET(srcpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"INCPATHS",     general_opt_handler,    BOPT_OFFSET(incpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"LIBPATHS",     general_opt_handler,    BOPT_OFFSET(libpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"CCFLAGS",      general_opt_handler,    BOPT_OFFSET(ccflags),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"LDFLAGS",      general_opt_handler,    BOPT_OFFSET(ldflags),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"LIBS",         general_opt_handler,    BOPT_OFFSET(libs),         OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"RELEASE",      general_opt_handler,    BOPT_OFFSET(release),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"DEBUG",        general_opt_handler,    BOPT_OFFSET(debug),        OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
-    {"TARGET",       general_opt_handler,    BOPT_OFFSET(target),       OPTDEF_NO_FLAGS},
+    {"BUILD_ROOT",   ccstr_opt_handler,      BOPT_OFFSET(build_root),   OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"INSTALL_ROOT", ccstr_opt_handler,      BOPT_OFFSET(install_root), OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"CC",           ccstr_opt_handler,      BOPT_OFFSET(cc),           OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LIBNAME",      ccstr_opt_handler,      BOPT_OFFSET(libname),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"COMPILE",      ccstr_opt_handler,      BOPT_OFFSET(compile),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LINK",         ccstr_opt_handler,      BOPT_OFFSET(link),         OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LINK_SHARED",  ccstr_opt_handler,      BOPT_OFFSET(link_shared),  OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"LINK_STATIC",  ccstr_opt_handler,      BOPT_OFFSET(link_static),  OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"INSTALLDIR",   ccstr_opt_handler,      BOPT_OFFSET(installdir),   OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND},
+    {"SRCPATHS",     ccstr_opt_handler,      BOPT_OFFSET(srcpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"INCPATHS",     ccstr_opt_handler,      BOPT_OFFSET(incpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"LIBPATHS",     ccstr_opt_handler,      BOPT_OFFSET(libpaths),     OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"CCFLAGS",      ccstr_opt_handler,      BOPT_OFFSET(ccflags),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"LDFLAGS",      ccstr_opt_handler,      BOPT_OFFSET(ldflags),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"LIBS",         ccstr_opt_handler,      BOPT_OFFSET(libs),         OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"RELEASE",      ccstr_opt_handler,      BOPT_OFFSET(release),      OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"DEBUG",        ccstr_opt_handler,      BOPT_OFFSET(debug),        OPTDEF_CCSTRCPY | OPTDEF_VAR_EXPAND | OPTDEF_APPEND},
+    {"TARGET",       ccstr_opt_handler,      BOPT_OFFSET(target),       OPTDEF_NO_FLAGS},
     {"TYPE",         type_opt_handler,       BOPT_OFFSET(type),         OPTDEF_NO_FLAGS},
     {"SO_VERSION",   so_version_opt_handler, BOPT_OFFSET(so_version),   OPTDEF_NO_FLAGS},
     {NULL, NULL, 0, 0},
@@ -70,17 +70,17 @@ bool append_opt(const char *optname) {
 // handles general case for parsed options
 // if append is true, append value to existing opt
 // if append is false, set opt to value
-static void general_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
+static void ccstr_opt_handler(const struct option_def *def, void *optptr, const char *key, const char *value) {
+    ccstr sv = CCSTR_VIEW(value, strlen(value));
     if (append_opt(key)) {
         if (def->flags & OPTDEF_APPEND) {
-            ccstrview sv = ccsv_raw(value);
-            ccstr_append_join((ccstr*)optptr, CCSTRVIEW_STATIC(" "), &sv, 1);
+            ccstr_append_join((ccstr*)optptr, CCSTR_LITERAL(" "), &sv, 1);
         } else {
             printf("config error: append to %s not supported.\n", def->name);
             exit(1);
         }
     } else {
-        ccstrcpy_raw((ccstr*)optptr, value);
+        ccstrcpy((ccstr*)optptr, sv);
     }
 };
 

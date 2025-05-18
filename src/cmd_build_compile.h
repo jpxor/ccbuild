@@ -69,7 +69,7 @@ static int compile_source(struct build_state *state, struct srcinfo *src) {
     char objpath[PATH_MAX] = {0};
     size_t reqsize;
 
-    reqsize = cwk_path_join(state->target_opts->build_root.cstr, src->path, objpath, sizeof objpath);
+    reqsize = cwk_path_join(state->target_opts->build_root.cptr, src->path, objpath, sizeof objpath);
     if (reqsize >= sizeof objpath) {
         printf("%s: cwk_path_join failed\n", __func__);
         abort();
@@ -106,19 +106,24 @@ static int compile_source(struct build_state *state, struct srcinfo *src) {
         ccfs_mkdirp(tmpdirpath);
     }
 
-    ccstr command = ccstrdup(state->target_opts->compile);
-    ccstr_replace(&command, CCSTRVIEW_STATIC("[OBJPATH]"), ccsv_raw(objpath));
-    ccstr_replace(&command, CCSTRVIEW_STATIC("[SRCPATH]"), ccsv_raw(src->path));
-    int ret = execute_command(command);
+    ccstr opath = CCSTR_VIEW(objpath, strlen(objpath));
+    ccstr spath = CCSTR_VIEW(src->path, strlen(src->path));
 
-    ccstr_free(&command);
-    return ret;
+    reqsize = state->target_opts->compile.len + opath.len + spath.len;
+    char command_buf[reqsize];
+
+    ccstr command = CCSTR(command_buf, 0, reqsize);
+    ccstrcpy(&command, state->target_opts->compile);
+
+    ccstr_replace(&command, CCSTR_LITERAL("[OBJPATH]"), opath);
+    ccstr_replace(&command, CCSTR_LITERAL("[SRCPATH]"), spath);
+    return execute_command(command);
 }
 
 static void compile_translation_unit_cb(void*ctx) {
     struct compilation_task_ctx taskctx = *(struct compilation_task_ctx*)ctx;
     struct build_state *state = taskctx.state;
-    const char *filepath = taskctx.srcpath.cstr;
+    const char *filepath = taskctx.srcpath.cptr;
 
     // filter by file type
     const char *ext = NULL;
@@ -138,7 +143,7 @@ static void compile_translation_unit_cb(void*ctx) {
     // get path relative to project root
     char relpath[PATH_MAX];
     if (!cwk_path_is_relative(filepath)) {
-        size_t reqsize = cwk_path_get_relative(state->rootdir.cstr, filepath, relpath, sizeof relpath);
+        size_t reqsize = cwk_path_get_relative(state->rootdir.cptr, filepath, relpath, sizeof relpath);
         if (reqsize >= sizeof relpath) {
             printf("%s: cwk_path_get_relative failed\n", __func__);
             abort();

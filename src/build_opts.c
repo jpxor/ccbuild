@@ -51,8 +51,8 @@ static struct build_opts g_default_bopts = {
 };
 
 // init new target opts by copying global default opts
-void init_opts(struct build_opts *opts, const char *name) {
-    ccstrcpy_raw(&opts->target, name);
+void init_opts(struct build_opts *opts, const ccstr name) {
+    ccstrcpy(&opts->target, name);
 
     opts->type = g_default_bopts.type;
     opts->so_version = g_default_bopts.so_version;
@@ -85,17 +85,19 @@ static bool match_opt(const char *opt, const char *key) {
 // then resolve which compiler to use
 static void resolve_default_cc(void) {
     if (g_default_bopts.cc.len == 0) {
-        ccstrcpy_raw(&g_default_bopts.cc, find_compiler("gcc|clang|cl"));
-    } else if (ccstrchr(ccsv(&g_default_bopts.cc), '|')) {
-        ccstrcpy_raw(&g_default_bopts.cc, find_compiler(g_default_bopts.cc.cstr));
+        ccstrcpy(&g_default_bopts.cc, find_compiler(CCSTR_LITERAL("gcc|clang|cl")));
+    } else if (ccstrchr(g_default_bopts.cc, '|')) {
+        ccstrcpy(&g_default_bopts.cc, find_compiler(g_default_bopts.cc));
     }
 }
 
 // callback for ini parser, called for each key/value pair
 // in the ini file and called when entering new [section]
-int parse_opts_cb(void* ctx, const char* target, const char* key, const char* value) {
-    struct cc_trie *target_opts_map = ctx;
+int parse_opts_cb(void* _ctx, const char* _target, const char* key, const char* value) {
     struct build_opts *target_opts = NULL;
+
+    struct cc_trie *target_opts_map = _ctx;
+    ccstr target = CCSTR_VIEW(_target, strlen(_target));
 
     // parser detected new [section], which means new target
     if (key == NULL && value == NULL) {
@@ -107,16 +109,16 @@ int parse_opts_cb(void* ctx, const char* target, const char* key, const char* va
         struct build_opts *target_opts = cc_alloc(target_opts_map->arena, sizeof *target_opts);
         init_opts(target_opts, target);
 
-        cc_trie_insert(target_opts_map, CC_TRIE_STR_KEY(target), target_opts);
+        cc_trie_insert(target_opts_map, target.cptr, target.len, target_opts);
         return 0;
     }
 
     // detect default opts vs specific target opts
-    if (strlen(target) == 0) {
-        target = "default";
+    if (target.len == 0) {
+        target = CCSTR_LITERAL("default");
         target_opts = &g_default_bopts;
     } else {
-        target_opts = cc_trie_search(target_opts_map, CC_TRIE_STR_KEY(target));
+        target_opts = cc_trie_search(target_opts_map, CC_TRIE_STR_KEY(target.cptr));
         assert(target_opts != NULL);
     }
 
@@ -154,19 +156,22 @@ static int resolve_variables_cb(void *ctx, void *data) {
 
             size_t max_loops = 10;
             for (size_t j = 0;; ++j) {
-                ccstr var = find_variable(ccsv(optval));
+                ccstr var = find_variable(*optval);
                 if (var.len == 0) {
                     break;
                 }
                 if (j >= max_loops) {
-                    printf("config error: failed to resolve variable '%.*s'\n", var.len, var.cstr);
+                    printf("config error: failed to resolve variable '%.*s'\n", var.len, var.cptr);
                     exit(1);
                 }
-                ccstrview varname = ccsv_slice(ccsv(&var), 2, var.len - 3);
-                ccstrview value = get_var_value(build_option_defs, opts, varname);
+                ccstr varname = ccstr_slice(var, 2, var.len - 3);
+                ccstr value = get_var_value(build_option_defs, opts, varname);
 
-                ccstr_replace(optval, ccsv(&var), value);
-                ccstr_free(&var);
+                int reqlen = ccstr_replace(optval, var, value);
+                if (reqlen > optval->cap) {
+                    ccstr_realloc(optval, reqlen+1);
+                    ccstr_replace(optval, var, value);
+                }
             }
         }
     }
@@ -175,24 +180,32 @@ static int resolve_variables_cb(void *ctx, void *data) {
 
 // TODO: what happens if no config file?
 struct cc_trie parse_build_opts(ccstr rootdir) {
-    ccstrview confname = CCSTRVIEW_STATIC("cc.conf");
-    ccstr *config_filepath = ccstr_append_join(&rootdir, CCSTRVIEW_STATIC("/"), &confname, 1);
+    ccstr pathsep = CCSTR_LITERAL("/");
+    ccstr path_segments[2] = {
+        rootdir, 
+        CCSTR_LITERAL("cc.conf"),
+    };
+    int reqlen = ccstr_append_join(NULL, pathsep, path_segments, 2);
+
+    char filepath_buf[reqlen+1];
+    ccstr config_filepath = CCSTR(filepath_buf, 0, sizeof filepath_buf);
+    ccstr_append_join(&config_filepath, pathsep, path_segments, 2);
 
     // init globals
     if (!g_opts_allocator) {
         g_opts_allocator = cc_new_arena_calloc_wrapper();
-        g_default_bopts.lastmodified = ccfs_last_modified_time(config_filepath->cstr);
+        g_default_bopts.lastmodified = ccfs_last_modified_time(filepath_buf);
     }
     struct cc_trie target_opts_map = {
         .arena = g_opts_allocator,
     };
 
-    ini_parse(config_filepath->cstr, parse_opts_cb, &target_opts_map);
+    ini_parse(filepath_buf, parse_opts_cb, &target_opts_map);
     if (target_opts_map.root == NULL) {
         resolve_default_cc();
 
         struct build_opts *default_opts = cc_alloc(target_opts_map.arena, sizeof *default_opts);
-        init_opts(default_opts, "");
+        init_opts(default_opts, CCSTR_LITERAL(""));
 
         cc_trie_insert(&target_opts_map, CC_TRIE_STR_KEY("default"), default_opts);
     }
@@ -202,12 +215,12 @@ struct cc_trie parse_build_opts(ccstr rootdir) {
 }
 
 void print_config(const struct build_opts *opts) {
-    printf("[%s]\n", opts->target.cstr);
+    printf("[%s]\n", opts->target.cptr);
     printf("type: flag(%d)\n", opts->type);
     if (opts->type & (SHARED|STATIC)) {
         printf("so_version: %u\n", opts->so_version);
     }
-#define printopt(optname) printf(#optname" = '%s'\n", opts->optname.cstr)
+#define printopt(optname) printf(#optname" = '%s'\n", opts->optname.cptr)
     printopt(compile);
     printopt(link);
     printopt(build_root);
