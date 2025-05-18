@@ -29,14 +29,14 @@ static void foreach_main_file(struct build_state *state, int (*callback)(void *c
 
 // iterate over all files found in the SRCPATHS directory paths list
 static int foreach_src_file(struct build_state *state, ccstr srcpaths, int (*callback)(void *ctx, const char *data)) {
-    ccstrview sv = ccsv(&srcpaths);
-    ccstrview path;
+    ccstr sv = srcpaths;
+    ccstr path;
 
     while (sv.len > 0) {
-        path = ccsv_tokenize(&sv, ' ');
+        path = ccstr_tokenize(&sv, ' ');
 
         char pathstr[PATH_MAX] = {0};
-        memcpy(pathstr, path.cstr, path.len);
+        memcpy(pathstr, path.cptr, path.len);
         if (ccfs_iterate_files(pathstr, state, callback) == -1) {
             return -1;
         }
@@ -116,8 +116,8 @@ static bool has_entry_point(const char *filename) {
 }
 
 static int execute_command(ccstr command) {
-    printf("%s\n", command.cstr);
-    return system(command.cstr);
+    printf("%s\n", command.cptr);
+    return system(command.cptr);
 }
 
 #endif // CMD_BUILD_HELPERS_H

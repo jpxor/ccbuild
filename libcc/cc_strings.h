@@ -8,135 +8,168 @@
 #ifndef _CC_STRINGS_H
 #define _CC_STRINGS_H
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <ctype.h>
 
-// ccstr rules:
-// - expands as needed via realloc
-// - cannot abort on enomem
-// - truncated flag set on enomem
-// - allows static init for convenience
-// - max len: 2^32
-// - returns ccstr* to allow chaining
+#define CCSTR_FLAG_LITERAL 0x01
 
-#define CCSTR_FLAG_HEAP    1
-#define CCSTR_FLAG_LITERAL 2
-#define CCSTR_FLAG_STACK   4
-#define CCSTR_FLAG_TRUNCATED 8
-
-// ccstr owns the raw cstr memory
-// except when static flag is set,
-// its cstr must be null terminated
+/**
+ * A string view into memory with a length and capacity.
+ * The capacity represents the known length of modifiable
+ * memory. A capacity of 0 means the string is read-only.
+ * 
+ * These string view are not guaranteed to be null-terminated.
+ *
+ * @param cptr Pointer to the character buffer containing the string data
+ * @param cap Total allocated capacity of the string buffer
+ * @param len Current length of the string (number of characters)
+ * @param flags Optional flags for additional string metadata or behavior
+ */
 typedef struct {
-    char *cstr;
+    char *cptr;
     size_t cap;
     uint32_t len;
     uint32_t flags;
 } ccstr;
 
-// ccstrview does not own its memory
-// and cannot be resized, and might
-// not be null terminated
-typedef struct {
-    char *cstr;
-    uint32_t len;
-    uint32_t flags;
-} ccstrview;
-
-#define CCSTR_LITERAL(s) (ccstr){  \
-    .cstr = s,                    \
-    .len = sizeof(s)-1,           \
-    .cap = 0        ,             \
-    .flags = CCSTR_FLAG_LITERAL,   \
+/**
+ * Creates a read-only view from a string literal.
+ * 
+ * @param lit A string literal from which to create a ccstr
+ * @return A ccstr with the string literal's data, calculated length, and zero capacity
+ */
+#define CCSTR_LITERAL(lit) (ccstr){ \
+    .cptr = (char *)lit,            \
+    .len = sizeof(lit)-1,           \
+    .cap = 0,                       \
+    .flags = CCSTR_FLAG_LITERAL,    \
 }
 
-#define CCSTR_STACK(array, size) (ccstr){  \
-    .cstr = array,               \
-    .len = 0,                    \
-    .cap = size,                 \
-    .flags = CCSTR_FLAG_STACK,   \
-}
-
-#define CCSTRVIEW_STATIC(s) (ccstrview){ \
-    .cstr = s,                    \
-    .len = sizeof(s)-1,           \
-    .flags = CCSTR_FLAG_LITERAL,   \
-}
-
-static inline
-ccstrview ccsv(const ccstr *s) {
-    return (ccstrview) {
-        .cstr = s->cstr,
-        .len = s->len,
+/**
+ * Creates a read-only view of a character buffer with a specified length.
+ * 
+ * This function creates a ccstr with zero capacity, indicating a read-only view.
+ * The view is not required to include a null terminator and assumes the buffer is
+ * at least as long as the specified length.
+ * 
+ * @param buf Pointer to the character buffer containing the string data
+ * @param len Length of the string data (number of characters)
+ * @return A ccstr representing a read-only view of the string
+ */
+static inline ccstr CCSTR_VIEW(const char *buf, int len) {
+    return (ccstr){
+        .cptr = (char *)buf,
+        .len = len,
+        .cap = 0,
     };
 }
 
-static inline
-ccstrview ccsv_raw(const char *raw) {
-    return (ccstrview) {
-        .cstr = (char*)raw,
-        .len = strlen(raw),
-        .flags = CCSTR_FLAG_LITERAL,
+static inline ccstr ccstr_view(const ccstr s) {
+    return CCSTR_VIEW(s.cptr, s.len);
+}
+
+/**
+ * Creates a mutable view of a character buffer with a specified length and capacity.
+ * 
+ * This function creates a ccstr with a mutable view of the provided buffer,
+ * allowing modification up to the specified capacity.
+ * 
+ * @param buf Pointer to the character buffer containing the string data
+ * @param len Current length of the string (number of characters)
+ * @param cap Total allocated capacity of the string buffer
+ * @return A ccstr representing a mutable view of the string
+ */
+static inline ccstr CCSTR(char *buf, int len, size_t cap) {
+    return (ccstr){
+        .cptr = buf,
+        .len = len,
+        .cap = cap,
     };
 }
 
-static inline int ccstr_is_truncated(ccstr *s) {
-    return s->flags & CCSTR_FLAG_TRUNCATED;
+static inline ccstr CCSTR_EMPTY() {
+    return (ccstr){0};
 }
 
-// constructors
-ccstr ccstr_empty(int capacity);
-ccstr ccstrdup(ccstr src);
-ccstr ccstr_rawlen(const char *raw, int len);
-
-ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len);
-ccstr* ccstr_replace(ccstr *s, ccstrview search, ccstrview replace);
-ccstr* ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count);
-
-ccstrview ccsv_offset(ccstrview sv, uint32_t  offset);
-ccstrview ccsv_slice(ccstrview sv, uint32_t  offset, uint32_t  len);
-ccstrview ccsv_tokenize(ccstrview *sv, char delim);
-
-int ccstrcasecmp(ccstrview a, ccstrview b);
-int ccsv_strcount(ccstrview sv, ccstrview pattern);
-int ccsv_charcount(ccstrview sv, char c);
-int ccstrstr(ccstrview sv, ccstrview pattern);
-int ccstrchr(ccstrview sv, char c);
-int ccstrncmp(ccstrview str0, ccstrview str1, size_t n);
-
-size_t ccstr_realloc(ccstr *s, size_t newcap);
-
-static inline
-ccstr * ccstr_replace_raw(ccstr *s, const char *search, const char *replace) {
-    return ccstr_replace(s, ccsv_raw((char *)search), ccsv_raw((char *)replace));
+/**
+ * Creates a new ccstr view with an offset into the original view.
+ * 
+ * This function creates a new view of the string, offset forward by the specified amount,
+ * adjusting the pointer, length, and capacity accordingly. If the offset
+ * exceeds the string's length, an empty string is returned.
+ * 
+ * @param sv The original ccstr from which to create an offset view
+ * @param offset The number of characters to offset from the start of the string
+ * @return A new ccstr view starting at the offset position
+ * @note Offsets can only move forward and must stay within the known string length.
+ *       Moving backwards would be unsafe because there is no way to know where the
+ *       string starts. Moving beyond the known length is unsafe because we don't know
+ *       if the memory is innitialized.
+ */
+static inline ccstr ccstr_offset(const ccstr sv, uint32_t offset) {
+    // reduce offset to ensure it fits within the view,
+    // will result in an empty string if offset is greater than
+    // the length
+    offset = (offset > sv.len)? sv.len : offset;
+    return (ccstr) {
+        .cptr = sv.cptr + offset,
+        .len = sv.len - offset,
+        .cap = sv.cap - offset,
+    };
 }
 
-static inline
-ccstr * ccstrcpy_raw(ccstr *s, const char *raw) {
-    return ccstrcpy_rawlen(s, raw, strlen(raw));
+/**
+ * Creates a new ccstr view with a specified offset and length.
+ * 
+ * This function creates a new view of the string,offset forward by the specified amount
+ * and limiting the length. If the requested length exceeds the remaining string length,
+ * the slice is truncated to the available length.
+ * 
+ * @param sv The original ccstr from which to create a slice
+ * @param offset The number of characters to offset from the start of the string
+ * @param len The maximum length of the slice
+ * @return A new ccstr view starting at the offset position with the specified length
+ * @note The slice is constrained by the original string's length and capacity
+ */
+static inline ccstr ccstr_slice(const ccstr sv, uint32_t offset, uint32_t  len) {
+    ccstr ret = ccstr_offset(sv, offset);
+    ret.len = (ret.len > len)? len : ret.len;
+    return ret;
 }
 
-static inline
-ccstr * ccstrcpy(ccstr *s, const ccstr src) {
-    return ccstrcpy_rawlen(s, src.cstr, src.len);
-}
+void ccstr_strip_whitespace(ccstr *s);
 
-static inline
-ccstr * ccstr_append(ccstr *dest, ccstrview sv) {
-    ccstrview sep = CCSTRVIEW_STATIC("");
+int ccstrcpy(ccstr *s, const ccstr src);
+
+int ccstr_tostr(char *buf, size_t bufsize, const ccstr src);
+
+ccstr ccstr_tokenize(ccstr *src, char delim);
+
+int ccsv_strcount(ccstr sv, ccstr pattern);
+
+int ccsv_charcount(ccstr sv, char c);
+
+int ccstrstr(ccstr sv, ccstr pattern);
+
+int ccstrchr(ccstr sv, char c);
+
+int ccstrcasecmp(ccstr a, ccstr b);
+
+int ccstrncmp(ccstr str0, ccstr str1, size_t n);
+
+int ccstr_replace(ccstr *s, ccstr search, ccstr replace);
+
+int ccstr_append_join(ccstr *dest, ccstr sep, ccstr *srcs, int count);
+
+static int ccstr_append(ccstr *dest, ccstr sv) {
+    ccstr sep = CCSTR_LITERAL("");
     return ccstr_append_join(dest, sep, &sv, 1);
 }
 
-static inline
-void ccstr_free(ccstr *s) {
-    if (s->flags & CCSTR_FLAG_LITERAL) {
-        return;
-    }
-    free(s->cstr);
-    s->cstr = NULL;
-    s->cap = s->len = 0;
-}
+size_t ccstr_realloc(ccstr *s, size_t newcap);
 
 #endif // _CC_STRINGS_H
 
@@ -148,55 +181,68 @@ void ccstr_free(ccstr *s) {
 #include <assert.h>
 #include <ctype.h>
 
-// constructors
-
-ccstr ccstr_empty(int cap) {
-    ccstr str = {
-        .cstr = calloc(1, cap),
-        .cap = cap,
-        .len = 0,
-    };
-    if (str.cstr == NULL) {
-        str.cap = 0;
-    }
-    return str;
-}
-
-ccstr ccstr_rawlen(const char *raw, int len) {
-    return *ccstrcpy_rawlen(&(ccstr){0}, raw, len);
-}
-
-ccstr ccstrdup(ccstr src) {
-    return ccstr_rawlen(src.cstr, src.len);
-}
-
 // READONLY functions
 
-int ccstrchr(ccstrview sv, char c) {
+/**
+ * Finds the first occurrence of a character in a string view.
+ * 
+ * @param sv String view to search in
+ * @param c Character to search for
+ * @return Index of the first occurrence of the character in the string view,
+ *         or -1 if the character is not found
+ * 
+ * @note Performs a linear search through the string view
+ * @note Returns -1 if the character is not found or if the string view is empty
+ */
+int ccstrchr(ccstr sv, char c) {
     for (uint32_t  i = 0; i < sv.len; ++i) {
-        if (sv.cstr[i] == c) {
+        if (sv.cptr[i] == c) {
             return i;
         }
     }
     return -1;
 }
 
-int ccstrstr(ccstrview sv, ccstrview pattern) {
+/**
+ * Finds the first occurrence of a pattern within a string view.
+ * 
+ * @param sv String view to search in
+ * @param pattern String view to search for
+ * @return Index of the first occurrence of the pattern in the string view,
+ *         or -1 if the pattern is not found or invalid
+ * 
+ * @note Returns -1 if pattern or string view is empty, or pattern is longer than string view
+ * @note Uses standard C library strstr() for substring search
+ */
+int ccstrstr(ccstr sv, ccstr pattern) {
     if (pattern.len == 0 || sv.len == 0 || pattern.len > sv.len) {
         return -1;
     }
-    const char* found = strstr(sv.cstr, pattern.cstr);
+    const char* found = strstr(sv.cptr, pattern.cptr);
     if (!found) {
         return -1;
     }
-    return (int)(found - sv.cstr);
+    return (int)(found - sv.cptr);
 }
 
-int ccstrcasecmp(ccstrview a, ccstrview b) {
+/**
+ * Compares two string views case-insensitively.
+ * 
+ * @param a First string view to compare
+ * @param b Second string view to compare
+ * @return Negative value if a is lexicographically less than b, 
+ *         zero if a is equal to b, 
+ *         positive value if a is lexicographically greater than b
+ * 
+ * @note Comparison is done character-by-character after converting to lowercase
+ * @note If strings are identical up to the length of the shorter string, 
+ *       the longer string is considered greater
+ */
+int ccstrcasecmp(ccstr a, ccstr b) {
     int minlen = (a.len < b.len)? a.len : b.len;
     for (int i = 0; i < minlen; ++i) {
-        char c1 = tolower((unsigned char)a.cstr[i]);
-        char c2 = tolower((unsigned char)b.cstr[i]);
+        char c1 = tolower((unsigned char)a.cptr[i]);
+        char c2 = tolower((unsigned char)b.cptr[i]);
         if (c1 != c2) {
             return c1 - c2;
         }
@@ -204,23 +250,17 @@ int ccstrcasecmp(ccstrview a, ccstrview b) {
     return a.len - b.len;
 }
 
-ccstrview ccsv_offset(ccstrview sv, uint32_t  offset) {
-    offset = (sv.len > offset)? offset : sv.len;
-    return (ccstrview) {
-        .cstr = sv.cstr + offset,
-        .len = sv.len - offset,
-    };
-}
-
-ccstrview ccsv_slice(ccstrview sv, uint32_t  offset, uint32_t  len) {
-    offset = (sv.len > offset)? offset : sv.len;
-    return (ccstrview) {
-        .cstr = sv.cstr + offset,
-        .len = (len <= sv.len - offset)? len : sv.len - offset,
-    };
-}
-
-int ccsv_strcount(ccstrview sv, ccstrview pattern) {
+/**
+ * Counts the number of occurrences of a specific string pattern in a string view.
+ * 
+ * @param sv String view to search
+ * @param pattern String pattern to count
+ * @return Number of times the pattern appears in the string view
+ * 
+ * @note Iterates through the string view and counts non-overlapping occurrences of the pattern
+ * @note Returns 0 if the pattern is empty, the string view is empty, or the pattern is longer than the string view
+ */
+int ccsv_strcount(ccstr sv, ccstr pattern) {
     if (pattern.len == 0 || sv.len == 0 || pattern.len > sv.len) {
         return 0;
     }
@@ -231,26 +271,47 @@ int ccsv_strcount(ccstrview sv, ccstrview pattern) {
             break;
         }
         ++count;
-        sv = ccsv_offset(sv, offset + pattern.len);
+        sv = ccstr_offset(sv, offset + pattern.len);
     }
     return count;
 }
 
-int ccsv_charcount(ccstrview sv, char c) {
+/**
+ * Counts the number of occurrences of a specific character in a string view.
+ * 
+ * @param sv String view to search
+ * @param c Character to count
+ * @return Number of times the character appears in the string view
+ * 
+ * @note Iterates through the entire string view and counts exact character matches
+ */
+int ccsv_charcount(ccstr sv, char c) {
     int count = 0;
     for (size_t i = 0; i < sv.len; ++i) {
-        if (sv.cstr[i] == c) {
+        if (sv.cptr[i] == c) {
             ++count;
         }
     }
     return count;
 }
 
-int ccstrncmp(ccstrview str0, ccstrview str1, size_t n) {
+/**
+ * Compares two string views up to a specified number of characters.
+ * 
+ * @param str0 First string view to compare
+ * @param str1 Second string view to compare
+ * @param n Maximum number of characters to compare
+ * @return Difference between the first differing characters, or 0 if strings are equal up to n characters
+ * 
+ * @note Compares characters from both string views up to the minimum of n, str0.len, and str1.len
+ * @note Returns positive value if str0 is lexicographically greater, negative if str1 is greater
+ * @note If one string is shorter than n, comparison stops at the end of the shorter string
+ */
+int ccstrncmp(ccstr str0, ccstr str1, size_t n) {
     size_t i;
     for (i = 0; i < n && i < str0.len && i < str1.len; ++i) {
-        if (str0.cstr[i] != str1.cstr[i]) {
-            return (int)str0.cstr[i] - (int)str1.cstr[i];
+        if (str0.cptr[i] != str1.cptr[i]) {
+            return (int)str0.cptr[i] - (int)str1.cptr[i];
         }
     }
     if (i < n) {
@@ -262,173 +323,251 @@ int ccstrncmp(ccstrview str0, ccstrview str1, size_t n) {
 
 // READ/WRITE functions
 
-size_t ccstr_realloc(ccstr *s, size_t newcap) {
-    if (newcap <= s->len) {
-        s->len = newcap - 1;
-
-    } else if (s->flags & CCSTR_FLAG_STACK) {
-        // can't realloc stack allocated ccstr
-        s->flags = CCSTR_FLAG_TRUNCATED;
-        return s->cap;
+/**
+ * Converts a ccstr to a null-terminated C string in a provided buffer.
+ * 
+ * @param buf Destination buffer to store the null-terminated string
+ * @param bufsize Size of the destination buffer
+ * @param src Source ccstr to convert
+ * @return Total length of the source string
+ * 
+ * @note If buffer is NULL or has zero size, returns source string length
+ * @note Ensures the destination buffer is null-terminated
+ * @note Copies up to buffer size - 1 characters to leave room for null terminator
+ */
+int ccstr_tostr(char *buf, size_t bufsize, const ccstr src) {
+    ccstr dst = CCSTR(buf, 0, bufsize);
+    int len = ccstrcpy(&dst, src);
+    if (buf && bufsize > 0) {
+        int end = (len < bufsize) ? len : bufsize-1;
+        buf[end] = 0;
     }
-    // literal innitialzed ccstr needs to be
-    // replaced with heap allocation
+    return len;
+}
+
+/**
+ * Removes leading and trailing whitespace from a string view in-place.
+ * 
+ * @param s Pointer to the string to be stripped of whitespace
+ * 
+ * @note Modifies the string view by adjusting its pointer, length, and capacity. The underlaying
+ * memory is not modified.
+ * @note Removes whitespace characters from both the beginning and end of the string
+ */
+void ccstr_strip_whitespace(ccstr *s) {
+    int offset = 0;
+    while (s->len > 0 && isspace(s->cptr[0])) {
+        s->cptr++;
+        offset++;
+        s->len--;
+    }
+    while (s->len > 0 && isspace(s->cptr[s->len-1])) {
+        s->len--;
+    }
+    if (s->cap > 0) {
+        s->cap -= offset;
+    }
+}
+
+size_t ccstr_realloc(ccstr *s, size_t newcap) {
     if (s->flags & CCSTR_FLAG_LITERAL) {
-        s->flags = s->flags & ~CCSTR_FLAG_LITERAL;
-        s->flags |= CCSTR_FLAG_HEAP;
         char *newptr = malloc(newcap);
         if (newptr == NULL) {
-            *s = (ccstr) {0};
-            s->flags = CCSTR_FLAG_TRUNCATED;
-            return 0;
+            return s->cap;
         }
-        memcpy(newptr, s->cstr, s->len);
-        s->cstr = newptr;
+        newptr[s->len] = 0;
+        s->cptr = newptr;
         s->cap = newcap;
-        s->cstr[s->len] = 0;
-        return s->cap;
+        s->flags = 0;
+        return newcap;
     }
-    void *newptr = realloc(s->cstr, newcap);
+    void *newptr = realloc(s->cptr, newcap);
     if (newptr == NULL) {
         return s->cap;
     }
-    s->cstr = newptr;
+    s->len = (s->len > newcap)? newcap : s->len;
+    s->cptr = newptr;
     s->cap = newcap;
-    s->cstr[s->len] = 0;
     return newcap;
 }
 
-ccstr* ccstrcpy_rawlen(ccstr *s, const char *raw, uint32_t len) {
-    assert(s != NULL);
-
-    if (s == NULL) {
-        return NULL;
+/**
+ * Copies a source string to a destination string, respecting the destination's capacity.
+ * 
+ * @param dst Pointer to the destination string to copy into
+ * @param src Source string to copy from
+ * @return Total length of the source string, even if not fully copied
+ * 
+ * @note If destination is NULL or has zero capacity, returns source string length
+ * @note Copies up to the minimum of source length and destination capacity
+ * @note Updates destination string length to reflect actual copied characters
+ */
+int ccstrcpy(ccstr *dst, const ccstr src) {
+    if (dst == NULL || dst->cap == 0) {
+        return src.len;
     }
-    size_t mincap = (size_t)len + 1;
-    if (s->cap < mincap) {
-        ccstr_realloc(s, mincap);
-        if (s->cap < mincap) {
-            s->flags |= CCSTR_FLAG_TRUNCATED;
-            return s;
-        }
+    size_t count = (src.len > dst->cap)? dst->cap : src.len;
+    for (size_t i = 0; i < count; i++) {
+        dst->cptr[i] = src.cptr[i];
     }
-    uint32_t i;
-    for (i = 0; i < s->cap && i < len; ++i) {
-        s->cstr[i] = raw[i];
-    }
-    s->cstr[i] = 0;
-    s->len = i;
-
-    if (s->len < len) {
-        s->flags |= CCSTR_FLAG_TRUNCATED;
-    }
-    return s;
+    dst->len = count;
+    return src.len;
 }
 
-ccstr * ccstr_replace(ccstr *s, ccstrview search, ccstrview replace) {
+/**
+ * Replaces all occurrences of a search string with a replacement string.
+ * 
+ * This function searches for all instances of 'search' within the string 's'
+ * and replaces them with the 'replace' string. It handles in-place replacement
+ * by shifting characters to accommodate different length search and replace strings.
+ * 
+ * @param s Pointer to the string to be modified
+ * @param search String view to search for within the original string
+ * @param replace String view to replace the search string with
+ * @return Total length of the modified string after replacements
+ * 
+ * @note If the destination buffer is too small, returns the required final length
+ * @note Modifies the original string in-place
+ * @note Null-terminates the string if space allows
+ */
+int ccstr_replace(ccstr *s, ccstr search, ccstr replace) {
     assert(s != NULL);
 
-    if (s == NULL) {
-        return NULL;
-    }
-    // check for cases where there is nothing to do
-    if (s->cstr == NULL || s->len == 0 || search.cstr == NULL || search.len == 0) {
-        return s;
-    }
     // count occurrences
-    int count = ccsv_strcount(ccsv(s), search);
+    int count = ccsv_strcount(*s, search);
     if (count == 0) {
-        return s;
+        return s->len;
     }
     // calc final size and expand if needed
     int shiftlen = replace.len - search.len;
     int final_len = s->len + (count * shiftlen);
 
-    if (replace.len > search.len) {
-        ccstr_realloc(s, final_len+1);
+    if (s->cap < final_len) {
+        return final_len;
     }
+
     // replace, memmove to account for search-vs-replace len diff
-    ccstrview itr = ccsv(s);
+    ccstr itr = ccstr_view(*s);
     for (int i = 0; i < count; ++i) {
         int offset = ccstrstr(itr, search);
         assert(offset >= 0);
 
-        itr = ccsv_offset(itr, offset);
+        itr = ccstr_offset(itr, offset);
         if (shiftlen != 0) {
-            char *dest = itr.cstr + replace.len;
-            char *src = itr.cstr + search.len;
+            char *dest = itr.cptr + replace.len;
+            char *src = itr.cptr + search.len;
             memmove(dest, src, itr.len - search.len);
             itr.len += shiftlen;
         }
-        memcpy(itr.cstr, replace.cstr, replace.len);
-        itr = ccsv_offset(itr, replace.len);
+        memcpy(itr.cptr, replace.cptr, replace.len);
+        itr = ccstr_offset(itr, replace.len);
     }
     s->len = final_len;
-    s->cstr[final_len] = 0;
-    return s;
+    if (s->len < s->cap) {
+        s->cptr[s->len] = 0;
+    }
+    return final_len;
 }
 
-ccstr * ccstr_append_join(ccstr *dest, ccstrview sep, ccstrview *srcs, int count) {
-    assert(dest != NULL);
-    assert(srcs != NULL);
-
-    if (dest == NULL || srcs == NULL || count == 0) {
-        return dest;
+/**
+ * Appends and joins multiple string views with a separator.
+ * 
+ * This function calculates the total length needed to join the given string views,
+ * optionally prepending an existing destination string. It handles:
+ * - Calculating the final length of the joined string
+ * - Appending a separator between each source string
+ * - Optionally starting with an existing destination string
+ * 
+ * @param dest Destination string to append to (can be NULL or empty)
+ * @param sep Separator string to insert between source strings
+ * @param srcs Array of source string views to join
+ * @param count Number of source strings in the array
+ * @return Total length of the resulting joined string
+ * 
+ * @note If dest is NULL or has zero capacity, only the length is calculated
+ * @note The destination string is null-terminated if space allows
+ */
+int ccstr_append_join(ccstr *dest, ccstr sep, ccstr *srcs, int count) {
+    // calculate final length
+    int final_len = 0;
+    for (int i = 0; i < count; i++) {
+        final_len += srcs[i].len + sep.len;
     }
-    // cap check
-    int additional_length = 0;
+    if (dest == NULL || dest->len == 0) {
+        final_len -= sep.len;
+    } else {
+        final_len += dest->len;
+    }
+    if (dest == NULL || dest->cap == 0) {
+        return final_len;
+    }
+    // appends
     for (int i = 0; i < count; ++i) {
-        additional_length += srcs[i].len + sep.len;
-    }
-    size_t mincap = dest->len + additional_length + 1;
-    if (dest->cap < mincap) {
-        ccstr_realloc(dest, mincap);
-        if (dest->cap < mincap) {
-            dest->flags |= CCSTR_FLAG_TRUNCATED;
-            return dest;
-        }
-    }
-    // append
-    for (int i = 0; i < count; ++i) {
-        memcpy(dest->cstr + dest->len, sep.cstr, sep.len);
+        memcpy(dest->cptr + dest->len, sep.cptr, sep.len);
         dest->len += sep.len;
 
-        memcpy(dest->cstr + dest->len, srcs[i].cstr, srcs[i].len);
+        memcpy(dest->cptr + dest->len, srcs[i].cptr, srcs[i].len);
         dest->len += srcs[i].len;
-
-        dest->flags |= (srcs[i].flags & CCSTR_FLAG_TRUNCATED);
     }
-    dest->cstr[dest->len] = 0;
-    return dest;
+    if (dest->len < dest->cap) {
+        dest->cptr[dest->len] = 0;
+    }
+    assert(dest->len == final_len);
+    return final_len;
 }
 
-ccstrview ccsv_tokenize(ccstrview *sv, char delim) {
-    ccstrview token = {0};
+/**
+ * Tokenizes a string view by splitting on a delimiter character.
+ * Returns the next token and advances the view past it.
+ * 
+ * This function:
+ * 1. Skips any leading delimiter characters
+ * 2. Extracts the next token up to the next delimiter
+ * 3. Advances the view past the token and trailing delimiters
+ * 4. Returns the token as a new string view
+ *
+ * The original view is modified to point to the remaining string.
+ * Multiple calls can be used to iterate through all tokens.
+ *
+ * @param view Pointer to the string view to tokenize. Will be modified.
+ * @param delim The delimiter character to split on
+ * @return A string view containing the next token (empty if no more tokens)
+ *
+ * Example usage:
+ *   ccstr str = CCSTR_LITERAL("a,b,c");
+ *   ccstr view = str;
+ *   ccstr token;
+ *   while (token = ccstr_tokenize(&view, ','), token.len > 0) {
+ *      // process token
+ *   }
+ */
+ccstr ccstr_tokenize(ccstr *view, char delim) {
+    ccstr token = {0};
     
-    // Skip leading delimiters
-    while (sv->len > 0 && sv->cstr[0] == delim) {
-        sv->cstr++;
-        sv->len--;
+    // skip leading delimiters
+    while (view->len > 0 && view->cptr[0] == delim) {
+        view->cptr++;
+        view->len--;
     }
     
-    // Find end of token
+    // find end of token
     uint32_t pos = 0;
-    while (pos < sv->len && sv->cstr[pos] != delim) {
+    while (pos < view->len && view->cptr[pos] != delim) {
         pos++;
     }
     
-    // Create token view
-    token.cstr = sv->cstr;
+    // create token view
+    token.cptr = view->cptr;
     token.len = pos;
     
-    // Advance original view
-    sv->cstr += pos;
-    sv->len -= pos;
+    // advance original view
+    view->cptr += pos;
+    view->len -= pos;
 
-    // Skip leading delimiters (again)
-    while (sv->len > 0 && sv->cstr[0] == delim) {
-        sv->cstr++;
-        sv->len--;
+    // skip leading delimiters (again)
+    while (view->len > 0 && view->cptr[0] == delim) {
+        view->cptr++;
+        view->len--;
     }
     
     return token;

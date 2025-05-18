@@ -55,14 +55,14 @@ int set_root_and_build_paths(struct build_state *state) {
     ccstr_realloc(&state->rootdir, 4096);
     ccstr_realloc(&state->buildir, 4096);
 
-    size_t reqlen = cwk_path_get_absolute(cwd, state->cmdopts.rootdir, state->rootdir.cstr, state->rootdir.cap);
+    size_t reqlen = cwk_path_get_absolute(cwd, state->cmdopts.rootdir, state->rootdir.cptr, state->rootdir.cap);
     if (reqlen >= state->rootdir.cap) {
         printf("error: filepath too long (op: get_absolute)\n");
         return EXIT_FAILURE;
     }
     state->rootdir.len = reqlen;
 
-    reqlen = cwk_path_join(state->rootdir.cstr, "build", state->buildir.cstr, state->buildir.cap);
+    reqlen = cwk_path_join(state->rootdir.cptr, "build", state->buildir.cptr, state->buildir.cap);
     if (reqlen >= state->buildir.cap) {
         printf("error: filepath too long (op: join)\n");
         return EXIT_FAILURE;
@@ -70,10 +70,10 @@ int set_root_and_build_paths(struct build_state *state) {
     state->buildir.len = reqlen;
 
     // all paths should be relative to project root (?)
-    ccfs_chdir(state->rootdir.cstr);
+    ccfs_chdir(state->rootdir.cptr);
 
-    printf("rootdir='%s'\n", state->rootdir.cstr);
-    printf("buildir='%s'\n", state->buildir.cstr);
+    printf("rootdir='%s'\n", state->rootdir.cptr);
+    printf("buildir='%s'\n", state->buildir.cptr);
     return 0;
 }
 
